@@ -27,7 +27,7 @@ if (!event) {
 const remaining = event.quota - event.sold;
 const unitPrice = event.price;
 const subtotal = unitPrice * quantity;
-const adminFee = 2500;
+const adminFee = 5000;
 const total = subtotal + adminFee;
 
 const formattedDate = new Date(event.date).toLocaleDateString('id-ID', {
