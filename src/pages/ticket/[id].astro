@@ -43,7 +43,7 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
           </svg>
           Kembali ke Tiket Saya
         </a>
-        <button id="btn-download" class="btn btn-ghost btn-sm btn-circle" title="Unduh PDF">
+        <button id="btn-download" class="btn btn-ghost btn-sm btn-circle" title="Unduh Gambar">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
@@ -129,46 +129,43 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
   </div>
 </Layout>
 
-<style>
-  @page {
-    size: auto;
-    margin: 10mm;
-  }
-  @media print {
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: white !important;
-      min-height: auto !important;
-    }
-    body * {
-      display: none !important;
-    }
-    #ticket-card, #ticket-card * {
-      display: revert !important;
-    }
-    #ticket-card {
-      position: fixed !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 100% !important;
-      max-width: 380px !important;
-      margin: 0 auto !important;
-      box-shadow: none !important;
-      border: 1px solid #ddd !important;
-      border-radius: 12px !important;
-      overflow: visible !important;
-      page-break-inside: avoid !important;
-    }
-  }
-</style>
-
 <script>
-  document.getElementById('btn-download')?.addEventListener('click', () => {
-    window.print();
+  document.getElementById('btn-download')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-download') as HTMLButtonElement;
+    const card = document.getElementById('ticket-card');
+    if (!card) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+
+    try {
+      // Load html2canvas dynamically
+      if (!(window as any).html2canvas) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load html2canvas'));
+          document.head.appendChild(script);
+        });
+      }
+
+      const canvas = await (window as any).html2canvas(card, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const link = document.createElement('a');
+      link.download = `etiket-${ticket.id}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>';
+    }
   });
 </script>
