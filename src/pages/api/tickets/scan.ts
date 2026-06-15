@@ -1,12 +1,14 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../../lib/db';
+import { db, initDb } from '../../../lib/db';
 import { tickets, transactions } from '../../../lib/schema';
 import { eq } from 'drizzle-orm';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    await initDb();
     const body = await request.json();
     const ticketId = String(body.ticketId ?? '').trim();
+    const action = body.action as string | undefined;
 
     if (!ticketId) {
       return new Response(JSON.stringify({ error: 'ticketId wajib diisi' }), {
@@ -25,14 +27,35 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    if (action === 'valid') {
+      await db.update(tickets).set({ status: 'used' }).where(eq(tickets.id, ticketId));
+      await db.update(transactions).set({ status: 'used' }).where(eq(transactions.id, ticket.transactionId));
+      return new Response(
+        JSON.stringify({ ok: true, message: 'Check-in berhasil', ticket: { ...ticket, status: 'used' } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'invalid') {
+      await db.update(tickets).set({ status: 'invalid' }).where(eq(tickets.id, ticketId));
+      return new Response(
+        JSON.stringify({ ok: true, message: 'Tiket ditandai tidak valid', ticket: { ...ticket, status: 'invalid' } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'used') {
+      await db.update(tickets).set({ status: 'used' }).where(eq(tickets.id, ticketId));
+      await db.update(transactions).set({ status: 'used' }).where(eq(transactions.id, ticket.transactionId));
+      return new Response(
+        JSON.stringify({ ok: true, message: 'Tiket ditandai sudah digunakan', ticket: { ...ticket, status: 'used' } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (ticket.status === 'used') {
       return new Response(
-        JSON.stringify({
-          ok: false,
-          status: 'used',
-          message: 'Tiket sudah digunakan',
-          ticket,
-        }),
+        JSON.stringify({ ok: false, status: 'used', message: 'Tiket sudah digunakan', ticket }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -45,18 +68,10 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     await db.update(tickets).set({ status: 'used' }).where(eq(tickets.id, ticketId));
-    await db
-      .update(transactions)
-      .set({ status: 'used' })
-      .where(eq(transactions.id, ticket.transactionId));
+    await db.update(transactions).set({ status: 'used' }).where(eq(transactions.id, ticket.transactionId));
 
     return new Response(
-      JSON.stringify({
-        ok: true,
-        status: 'valid',
-        message: 'Check-in berhasil',
-        ticket: { ...ticket, status: 'used' },
-      }),
+      JSON.stringify({ ok: true, status: 'valid', message: 'Check-in berhasil', ticket: { ...ticket, status: 'used' } }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err) {

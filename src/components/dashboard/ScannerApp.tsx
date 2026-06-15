@@ -20,13 +20,20 @@ export default function ScannerApp({ initialEventId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const [ticketId, setTicketId] = useState('');
-  const [scanResult, setScanResult] = useState<{
-    status: 'idle' | 'success' | 'error';
+  const [ticketInfo, setTicketInfo] = useState<{
+    id: string;
+    buyerName: string;
+    ticketType: string;
+    event: string;
+    status: string;
+  } | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [actionResult, setActionResult] = useState<{
+    status: 'success' | 'error';
     message: string;
-    details?: { buyerName: string; ticketType: string; event: string };
-  }>({ status: 'idle', message: '' });
-  const [isScanning, setIsScanning] = useState(true);
-  const [scanHistory, setScanHistory] = useState<{ id: string; name: string; status: string; time: string }[]>([]);
+  } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [scanHistory, setScanHistory] = useState<{ id: string; name: string; action: string; time: string }[]>([]);
 
   useEffect(() => {
     fetch('/api/events')
@@ -43,7 +50,6 @@ export default function ScannerApp({ initialEventId }: Props) {
             scannedTickets: e.sold ?? 0,
           }));
           setEvents(list);
-
           if (initialEventId) {
             const match = list.find(e => e.id === initialEventId);
             if (match) setSelectedEvent(match);
@@ -57,61 +63,81 @@ export default function ScannerApp({ initialEventId }: Props) {
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const handleManualSubmit = async (e: React.FormEvent) => {
+  const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticketId.trim()) return;
-    await scanTicket(ticketId.trim());
+
+    setLookupError(null);
+    setTicketInfo(null);
+    setIsProcessing(true);
+
+    try {
+      const res = await fetch('/api/tickets/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId: ticketId.trim() }),
+      });
+      const data = await res.json();
+
+      if (data.ok && data.ticket) {
+        setTicketInfo({
+          id: data.ticket.id,
+          buyerName: data.ticket.buyerName,
+          ticketType: data.ticket.ticketType,
+          event: data.ticket.eventTitle,
+          status: data.ticket.status,
+        });
+      } else {
+        setLookupError(data.message ?? 'Tiket tidak ditemukan');
+      }
+    } catch {
+      setLookupError('Gagal terhubung ke server');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const scanTicket = async (id: string) => {
-    setIsScanning(false);
+  const handleAction = async (action: 'valid' | 'invalid' | 'used') => {
+    if (!ticketInfo) return;
+    setIsProcessing(true);
+
+    const labels = { valid: 'Tiket Valid', invalid: 'Tiket Tidak Valid', used: 'Sudah Digunakan' };
+    const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
     try {
       const res = await fetch('/api/tickets/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketId: id }),
+        body: JSON.stringify({ ticketId: ticketInfo.id, action }),
       });
       const data = await res.json();
-      const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-      if (data.ok && data.status === 'valid') {
-        setScanResult({
-          status: 'success',
-          message: 'Check-in Berhasil!',
-          details: {
-            buyerName: data.ticket?.buyerName ?? '-',
-            ticketType: data.ticket?.ticketType ?? '-',
-            event: data.ticket?.eventTitle ?? '-',
-          },
-        });
-        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'success', time }, ...prev].slice(0, 20));
-      } else if (data.status === 'used') {
-        setScanResult({
-          status: 'error',
-          message: 'Tiket Sudah Digunakan!',
-          details: data.ticket ? {
-            buyerName: data.ticket.buyerName,
-            ticketType: data.ticket.ticketType,
-            event: data.ticket.eventTitle,
-          } : undefined,
-        });
-        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'used', time }, ...prev].slice(0, 20));
-      } else {
-        setScanResult({ status: 'error', message: data.message ?? 'Tiket Tidak Valid!' });
-        setScanHistory(prev => [{ id, name: id, status: 'invalid', time }, ...prev].slice(0, 20));
+      setActionResult({
+        status: data.ok ? 'success' : 'error',
+        message: data.ok ? `${labels[action]} — ${ticketInfo.buyerName}` : (data.message ?? 'Gagal memproses'),
+      });
+
+      if (data.ok) {
+        setScanHistory(prev => [{
+          id: ticketInfo.id,
+          name: ticketInfo.buyerName,
+          action: labels[action],
+          time,
+        }, ...prev].slice(0, 50));
       }
     } catch {
-      setScanResult({ status: 'error', message: 'Gagal terhubung ke server' });
+      setActionResult({ status: 'error', message: 'Gagal terhubung ke server' });
     }
 
     setTimeout(() => {
-      setScanResult({ status: 'idle', message: '' });
+      setActionResult(null);
+      setTicketInfo(null);
       setTicketId('');
-      setIsScanning(true);
+      setIsProcessing(false);
     }, 3000);
   };
 
-  const totalScans = scanHistory.filter(h => h.status === 'success').length;
+  const totalScans = scanHistory.length;
 
   if (loading) {
     return (
@@ -126,19 +152,13 @@ export default function ScannerApp({ initialEventId }: Props) {
       <div className="max-w-2xl mx-auto">
         <h2 className="text-xl font-bold text-base-content mb-2">Pilih Event</h2>
         <p className="text-base-content/60 mb-6">Pilih event mana yang ingin di-scan tiketnya.</p>
-
         {events.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-base-content/50">Belum ada event tersedia.</p>
-          </div>
+          <div className="text-center py-12"><p className="text-base-content/50">Belum ada event tersedia.</p></div>
         ) : (
           <div className="grid gap-3">
             {events.map(ev => (
-              <button
-                key={ev.id}
-                onClick={() => setSelectedEvent(ev)}
-                className="card card-side bg-base-100 shadow-sm border border-base-200 hover:border-primary hover:shadow-md transition-all text-left"
-              >
+              <button key={ev.id} onClick={() => setSelectedEvent(ev)}
+                className="card card-side bg-base-100 shadow-sm border border-base-200 hover:border-primary hover:shadow-md transition-all text-left">
                 <figure className="w-24 h-24 flex-shrink-0">
                   <img src={ev.poster} alt={ev.title} className="w-full h-full object-cover" />
                 </figure>
@@ -160,9 +180,9 @@ export default function ScannerApp({ initialEventId }: Props) {
 
   return (
     <div className="max-w-lg mx-auto">
-      {/* Selected Event Header */}
+      {/* Event Header */}
       <div className="flex items-center gap-3 mb-6 bg-base-100 p-4 rounded-xl border border-base-200">
-        <button onClick={() => { setSelectedEvent(null); setScanHistory([]); }} className="btn btn-ghost btn-sm btn-circle">
+        <button onClick={() => { setSelectedEvent(null); setScanHistory([]); setTicketInfo(null); }} className="btn btn-ghost btn-sm btn-circle">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
@@ -174,7 +194,7 @@ export default function ScannerApp({ initialEventId }: Props) {
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats */}
       <div className="stats stats-vertical sm:stats-horizontal shadow w-full mb-6 bg-base-100">
         <div className="stat py-3 px-4">
           <div className="stat-title text-xs">Session Scans</div>
@@ -190,68 +210,65 @@ export default function ScannerApp({ initialEventId }: Props) {
         </div>
       </div>
 
-      {/* Scanner Viewfinder */}
-      <div className="relative bg-gray-900 rounded-2xl overflow-hidden aspect-[3/4] mb-6 shadow-lg border-4 border-gray-800">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-gray-500 text-sm">Kamera Scanner</p>
+      {/* Action Result Overlay */}
+      {actionResult && (
+        <div className={`alert mb-4 ${actionResult.status === 'success' ? 'alert-success' : 'alert-error'}`}>
+          <span className="font-semibold">{actionResult.message}</span>
         </div>
+      )}
 
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-black/40"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-white/50 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]">
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
-            {isScanning && (
-              <div className="absolute top-0 left-0 w-full h-1 bg-primary shadow-[0_0_8px_2px_rgba(var(--p),0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
-            )}
-          </div>
-        </div>
-
-        {scanResult.status !== 'idle' && (
-          <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 ${
-            scanResult.status === 'success' ? 'bg-success/90' : 'bg-error/90'
-          }`}>
-            <div className="bg-white p-4 rounded-full mb-4 shadow-lg">
-              {scanResult.status === 'success' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
+      {/* Lookup Form */}
+      {!ticketInfo && !actionResult && (
+        <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200 mb-6">
+          <h3 className="text-lg font-semibold text-base-content mb-4">Cek Tiket</h3>
+          <form onSubmit={handleLookup} className="flex gap-2">
+            <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} disabled={isProcessing} />
+            <button type="submit" className="btn btn-primary" disabled={isProcessing || !ticketId.trim()}>
+              {isProcessing ? <span className="loading loading-spinner loading-sm"></span> : 'Cek'}
+            </button>
+          </form>
+          {lookupError && (
+            <div className="alert alert-error mt-3 text-sm">
+              <span>{lookupError}</span>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2">{scanResult.message}</h3>
-            {scanResult.details && (
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 w-full text-left mt-4 border border-white/30">
-                <p className="text-white/90 text-sm mb-1">Nama Pembeli</p>
-                <p className="text-white font-semibold mb-3">{scanResult.details.buyerName}</p>
-                <p className="text-white/90 text-sm mb-1">Kategori Tiket</p>
-                <p className="text-white font-semibold mb-3">{scanResult.details.ticketType}</p>
-                <p className="text-white/90 text-sm mb-1">Event</p>
-                <p className="text-white font-semibold">{scanResult.details.event}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Manual Input */}
-      <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200 mb-6">
-        <h3 className="text-lg font-semibold text-base-content mb-4">Input Manual</h3>
-        <form onSubmit={handleManualSubmit} className="flex gap-2 mb-4">
-          <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} disabled={!isScanning} />
-          <button type="submit" className="btn btn-primary" disabled={!isScanning || !ticketId.trim()}>Cek</button>
-        </form>
-        <div className="divider text-xs text-base-content/40">SIMULASI</div>
-        <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={() => scanTicket('tkt-001')} className="btn btn-outline btn-success btn-sm" disabled={!isScanning}>Scan Valid</button>
-          <button type="button" onClick={() => scanTicket('INVALID-XYZ')} className="btn btn-outline btn-error btn-sm" disabled={!isScanning}>Scan Invalid</button>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Ticket Info + Action Buttons */}
+      {ticketInfo && !actionResult && (
+        <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200 mb-6">
+          <div className="text-center mb-6">
+            <div className={`badge badge-lg mb-3 ${
+              ticketInfo.status === 'valid' ? 'badge-success' : ticketInfo.status === 'used' ? 'badge-warning' : 'badge-error'
+            }`}>
+              Status: {ticketInfo.status === 'valid' ? 'Valid' : ticketInfo.status === 'used' ? 'Sudah Digunakan' : 'Tidak Valid'}
+            </div>
+            <h3 className="text-xl font-bold text-base-content">{ticketInfo.buyerName}</h3>
+            <p className="text-sm text-base-content/60">{ticketInfo.ticketType} — {ticketInfo.event}</p>
+            <p className="text-xs text-base-content/40 font-mono mt-1">{ticketInfo.id}</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <button onClick={() => handleAction('valid')} className="btn btn-success text-white" disabled={isProcessing}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              Tiket Valid
+            </button>
+            <button onClick={() => handleAction('used')} className="btn btn-warning text-white" disabled={isProcessing}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Sudah Digunakan
+            </button>
+            <button onClick={() => handleAction('invalid')} className="btn btn-error text-white" disabled={isProcessing}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              Tiket Tidak Valid
+            </button>
+          </div>
+
+          <button onClick={() => { setTicketInfo(null); setLookupError(null); }} className="btn btn-ghost w-full mt-3" disabled={isProcessing}>
+            Cek Tiket Lain
+          </button>
+        </div>
+      )}
 
       {/* Scan History */}
       {scanHistory.length > 0 && (
@@ -260,17 +277,14 @@ export default function ScannerApp({ initialEventId }: Props) {
           <div className="space-y-2">
             {scanHistory.map((item, i) => (
               <div key={i} className="flex items-center justify-between py-2 border-b border-base-200 last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${item.status === 'success' ? 'bg-success' : item.status === 'used' ? 'bg-warning' : 'bg-error'}`}></div>
-                  <div>
-                    <p className="text-sm font-medium text-base-content">{item.name}</p>
-                    <p className="text-xs text-base-content/50">{item.id}</p>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium text-base-content">{item.name}</p>
+                  <p className="text-xs text-base-content/50">{item.id}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`badge badge-sm ${item.status === 'success' ? 'badge-success' : item.status === 'used' ? 'badge-warning' : 'badge-error'}`}>
-                    {item.status === 'success' ? 'Valid' : item.status === 'used' ? 'Pakai' : 'Invalid'}
-                  </span>
+                  <span className={`badge badge-sm ${
+                    item.action === 'Tiket Valid' ? 'badge-success' : item.action === 'Sudah Digunakan' ? 'badge-warning' : 'badge-error'
+                  }`}>{item.action}</span>
                   <p className="text-xs text-base-content/50 mt-1">{item.time}</p>
                 </div>
               </div>
@@ -278,15 +292,6 @@ export default function ScannerApp({ initialEventId }: Props) {
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes scan {
-          0% { top: 0; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { top: 100%; opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
