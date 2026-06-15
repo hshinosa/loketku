@@ -1,5 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { db, initDb } from '../../lib/db';
+import { transactions } from '../../lib/schema';
+
+await initDb();
+const trxRows = await db.select().from(transactions);
+const totalRevenue = trxRows.filter((t) => t.status === 'paid').reduce((sum, t) => sum + t.total, 0);
+const formatRupiah = (n: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
 const status = Astro.url.searchParams.get('status') || 'form';
 ---
@@ -28,7 +36,7 @@ const status = Astro.url.searchParams.get('status') || 'form';
             <!-- Saldo Tersedia -->
             <div class="bg-primary/5 rounded-xl p-4 border border-primary/10">
               <p class="text-sm text-base-content/60">Saldo Tersedia</p>
-              <p class="text-2xl font-bold text-primary mt-1" id="saldo-tersedia">Rp 0</p>
+              <p class="text-2xl font-bold text-primary mt-1">{formatRupiah(totalRevenue)}</p>
             </div>
 
             <!-- Form -->
@@ -222,8 +230,12 @@ const status = Astro.url.searchParams.get('status') || 'form';
 
   </div>
 
+  <div id="withdraw-data" data-saldo={totalRevenue} style="display:none"></div>
+
   <script>
     const currentStatus = new URLSearchParams(window.location.search).get('status') || 'form';
+    const withdrawData = document.getElementById('withdraw-data');
+    const saldo = withdrawData ? Number(withdrawData.getAttribute('data-saldo')) : 0;
 
     // ---- Load bank info from localStorage ----
     function getBankInfo() {
@@ -266,11 +278,6 @@ const status = Astro.url.searchParams.get('status') || 'form';
       } else {
         if (noBankWarning) noBankWarning.classList.remove('hidden');
       }
-
-      // Get saldo from transactions (mock)
-      const saldo = 15750000; // mock value
-      const saldoEl = document.getElementById('saldo-tersedia');
-      if (saldoEl) saldoEl.textContent = formatRupiah(saldo);
 
       // Set max amount
       if (maxBtn) maxBtn.setAttribute('data-amount', String(saldo));

@@ -61,6 +61,10 @@ const { title } = Astro.props;
 										<span id="user-name-display" class="font-semibold block">User Name</span>
 										<span id="user-role-display" class="text-xs text-gray-500 capitalize">Role</span>
 									</li>
+									<li id="nav-saldo" class="hidden px-4 py-2 border-b border-base-200 mb-2">
+										<span class="text-xs text-gray-500">Saldo Saat Ini</span>
+										<span id="nav-saldo-amount" class="text-sm font-bold text-primary">Rp 0</span>
+									</li>
 									<li id="nav-dashboard" class="hidden"><a href="/dashboard">Dashboard Organizer</a></li>
 									<li id="nav-scan" class="hidden"><a href="/dashboard/scan">Scanner Tiket</a></li>
 									<li id="nav-withdraw" class="hidden"><a href="/dashboard/withdraw">Tarik Dana</a></li>
@@ -102,6 +106,8 @@ const { title } = Astro.props;
 				const navScan = document.getElementById('nav-scan');
 				const navWithdraw = document.getElementById('nav-withdraw');
 				const navTickets = document.getElementById('nav-tickets');
+				const navSaldo = document.getElementById('nav-saldo');
+				const navSaldoAmount = document.getElementById('nav-saldo-amount');
 				const userNameDisplay = document.getElementById('user-name-display');
 				const userRoleDisplay = document.getElementById('user-role-display');
 				const userInitial = document.getElementById('user-initial');
@@ -127,12 +133,23 @@ const { title } = Astro.props;
 					if (navScan) navScan.classList.add('hidden');
 					if (navWithdraw) navWithdraw.classList.add('hidden');
 					if (navTickets) navTickets.classList.add('hidden');
+					if (navSaldo) navSaldo.classList.add('hidden');
 
 					// Update navigation based on role
 					if (user.role === 'organizer') {
 						if (navDashboard) navDashboard.classList.remove('hidden');
 						if (navScan) navScan.classList.remove('hidden');
 						if (navWithdraw) navWithdraw.classList.remove('hidden');
+						if (navSaldo) navSaldo.classList.remove('hidden');
+						// Fetch real saldo from API
+						fetch('/api/stats/revenue')
+							.then(r => r.json())
+							.then(data => {
+								if (navSaldoAmount) {
+									navSaldoAmount.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(data.totalRevenue || 0);
+								}
+							})
+							.catch(() => {});
 					} else {
 						// Buyer role
 						if (navTickets) navTickets.classList.remove('hidden');
