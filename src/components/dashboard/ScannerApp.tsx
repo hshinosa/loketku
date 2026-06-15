@@ -1,30 +1,40 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ScannerApp() {
+interface EventOption {
+  id: string;
+  title: string;
+  totalTickets: number;
+  scannedTickets: number;
+}
+
+interface Props {
+  initialEventId?: string;
+}
+
+export default function ScannerApp({ initialEventId }: Props) {
   const [ticketId, setTicketId] = useState('');
+  const [events, setEvents] = useState<EventOption[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId ?? 'all');
   const [scanResult, setScanResult] = useState<{
     status: 'idle' | 'success' | 'error';
     message: string;
-    details?: {
-      buyerName: string;
-      ticketType: string;
-      event: string;
-    };
+    details?: { buyerName: string; ticketType: string; event: string };
   }>({ status: 'idle', message: '' });
   const [isScanning, setIsScanning] = useState(true);
+  const [scanHistory, setScanHistory] = useState<{ id: string; name: string; status: string; time: string }[]>([]);
 
-  // Simulate scanning animation
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    if (isScanning) {
-      interval = setInterval(() => {
-        // Just to keep the animation running
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isScanning]);
+    fetch('/api/events').then(r => r.json()).then(data => {
+      if (data.events) {
+        setEvents(data.events.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          totalTickets: e.quota ?? 0,
+          scannedTickets: e.sold ?? 0,
+        })));
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +51,7 @@ export default function ScannerApp() {
         body: JSON.stringify({ ticketId: id }),
       });
       const data = await res.json();
+      const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
       if (data.ok && data.status === 'valid') {
         setScanResult({
@@ -52,29 +63,24 @@ export default function ScannerApp() {
             event: data.ticket?.eventTitle ?? '-',
           },
         });
+        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'success', time }, ...prev].slice(0, 10));
       } else if (data.status === 'used') {
         setScanResult({
           status: 'error',
           message: 'Tiket Sudah Digunakan!',
-          details: data.ticket
-            ? {
-                buyerName: data.ticket.buyerName,
-                ticketType: data.ticket.ticketType,
-                event: data.ticket.eventTitle,
-              }
-            : undefined,
+          details: data.ticket ? {
+            buyerName: data.ticket.buyerName,
+            ticketType: data.ticket.ticketType,
+            event: data.ticket.eventTitle,
+          } : undefined,
         });
+        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'used', time }, ...prev].slice(0, 10));
       } else {
-        setScanResult({
-          status: 'error',
-          message: data.message ?? 'Tiket Tidak Ditemukan atau Tidak Valid!',
-        });
+        setScanResult({ status: 'error', message: data.message ?? 'Tiket Tidak Valid!' });
+        setScanHistory(prev => [{ id, name: id, status: 'invalid', time }, ...prev].slice(0, 10));
       }
     } catch (err) {
-      setScanResult({
-        status: 'error',
-        message: 'Gagal terhubung ke server: ' + String(err),
-      });
+      setScanResult({ status: 'error', message: 'Gagal terhubung ke server' });
     }
 
     setTimeout(() => {
@@ -84,39 +90,60 @@ export default function ScannerApp() {
     }, 3000);
   };
 
+  const selectedEvent = events.find(e => e.id === selectedEventId);
+  const totalScans = scanHistory.filter(h => h.status === 'success').length;
+
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-lg mx-auto">
+      {/* Event Filter */}
+      <div className="form-control mb-4">
+        <label className="label"><span className="label-text font-medium">Filter Event</span></label>
+        <select className="select select-bordered w-full" value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}>
+          <option value="all">Semua Event</option>
+          {events.map(ev => (
+            <option key={ev.id} value={ev.id}>{ev.title}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="stats stats-vertical sm:stats-horizontal shadow w-full mb-6 bg-base-100">
+        <div className="stat py-3 px-4">
+          <div className="stat-title text-xs">Session Scans</div>
+          <div className="stat-value text-2xl text-primary">{totalScans}</div>
+        </div>
+        <div className="stat py-3 px-4">
+          <div className="stat-title text-xs">Total Check-in</div>
+          <div className="stat-value text-2xl">{selectedEvent ? selectedEvent.scannedTickets : '—'}</div>
+        </div>
+        <div className="stat py-3 px-4">
+          <div className="stat-title text-xs">Kuota Tiket</div>
+          <div className="stat-value text-2xl">{selectedEvent ? selectedEvent.totalTickets : '—'}</div>
+        </div>
+      </div>
+
       {/* Scanner Viewfinder */}
-      <div className="relative bg-black rounded-2xl overflow-hidden aspect-[3/4] mb-6 shadow-lg border-4 border-gray-800">
-        {/* Camera placeholder */}
+      <div className="relative bg-gray-900 rounded-2xl overflow-hidden aspect-[3/4] mb-6 shadow-lg border-4 border-gray-800">
         <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-gray-500 text-sm">Kamera Aktif</p>
+          <p className="text-gray-500 text-sm">Kamera Scanner</p>
         </div>
 
-        {/* Scanning Overlay */}
         <div className="absolute inset-0 pointer-events-none">
-          {/* Darkened edges */}
           <div className="absolute inset-0 bg-black/40"></div>
-          
-          {/* Clear center square */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-white/50 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]">
-            {/* Corner markers */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#1932B9] rounded-tl-lg"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[#1932B9] rounded-tr-lg"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[#1932B9] rounded-bl-lg"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#1932B9] rounded-br-lg"></div>
-            
-            {/* Scanning line animation */}
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
             {isScanning && (
-              <div className="absolute top-0 left-0 w-full h-1 bg-[#1932B9] shadow-[0_0_8px_2px_rgba(25,50,185,0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-primary shadow-[0_0_8px_2px_rgba(var(--p),0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
             )}
           </div>
         </div>
 
-        {/* Result Overlay */}
         {scanResult.status !== 'idle' && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 ${
-            scanResult.status === 'success' ? 'bg-success/90' : 'bg-[#BF0000]/90'
+            scanResult.status === 'success' ? 'bg-success/90' : 'bg-error/90'
           }`}>
             <div className="bg-white p-4 rounded-full mb-4 shadow-lg">
               {scanResult.status === 'success' ? (
@@ -124,21 +151,18 @@ export default function ScannerApp() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-[#BF0000]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               )}
             </div>
             <h3 className="text-2xl font-bold text-white mb-2">{scanResult.message}</h3>
-            
             {scanResult.details && (
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 w-full text-left mt-4 border border-white/30">
                 <p className="text-white/90 text-sm mb-1">Nama Pembeli</p>
                 <p className="text-white font-semibold mb-3">{scanResult.details.buyerName}</p>
-                
                 <p className="text-white/90 text-sm mb-1">Kategori Tiket</p>
                 <p className="text-white font-semibold mb-3">{scanResult.details.ticketType}</p>
-                
                 <p className="text-white/90 text-sm mb-1">Event</p>
                 <p className="text-white font-semibold">{scanResult.details.event}</p>
               </div>
@@ -147,48 +171,46 @@ export default function ScannerApp() {
         )}
       </div>
 
-      {/* Manual Input Form */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Input Manual</h3>
-        <form onSubmit={handleManualSubmit} className="flex gap-2 mb-6">
-          <input 
-            type="text" 
-            placeholder="Masukkan ID Tiket..." 
-            className="input input-bordered flex-1 focus:outline-none focus:border-[#1932B9]"
-            value={ticketId}
-            onChange={(e) => setTicketId(e.target.value)}
-            disabled={!isScanning}
-          />
-          <button 
-            type="submit" 
-            className="btn bg-[#1932B9] hover:bg-[#1932B9]/90 text-white border-none"
-            disabled={!isScanning || !ticketId.trim()}
-          >
-            Cek
-          </button>
+      {/* Manual Input */}
+      <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200 mb-6">
+        <h3 className="text-lg font-semibold text-base-content mb-4">Input Manual</h3>
+        <form onSubmit={handleManualSubmit} className="flex gap-2 mb-4">
+          <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} disabled={!isScanning} />
+          <button type="submit" className="btn btn-primary" disabled={!isScanning || !ticketId.trim()}>Cek</button>
         </form>
 
-        <div className="divider text-xs text-gray-400">SIMULASI SCANNER</div>
-        
+        <div className="divider text-xs text-base-content/40">SIMULASI</div>
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => scanTicket('tkt-001')}
-            className="btn btn-outline text-success hover:bg-success hover:text-white hover:border-success btn-sm"
-            disabled={!isScanning}
-          >
-            Scan Seed Ticket
-          </button>
-          <button
-            type="button"
-            onClick={() => scanTicket('INVALID-XYZ')}
-            className="btn btn-outline text-[#BF0000] hover:bg-[#BF0000] hover:text-white hover:border-[#BF0000] btn-sm"
-            disabled={!isScanning}
-          >
-            Scan Invalid
-          </button>
+          <button type="button" onClick={() => scanTicket('tkt-001')} className="btn btn-outline btn-success btn-sm" disabled={!isScanning}>Scan Valid</button>
+          <button type="button" onClick={() => scanTicket('INVALID-XYZ')} className="btn btn-outline btn-error btn-sm" disabled={!isScanning}>Scan Invalid</button>
         </div>
       </div>
+
+      {/* Scan History */}
+      {scanHistory.length > 0 && (
+        <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200">
+          <h3 className="text-lg font-semibold text-base-content mb-4">Riwayat Scan</h3>
+          <div className="space-y-2">
+            {scanHistory.map((item, i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-base-200 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${item.status === 'success' ? 'bg-success' : item.status === 'used' ? 'bg-warning' : 'bg-error'}`}></div>
+                  <div>
+                    <p className="text-sm font-medium text-base-content">{item.name}</p>
+                    <p className="text-xs text-base-content/50">{item.id}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`badge badge-sm ${item.status === 'success' ? 'badge-success' : item.status === 'used' ? 'badge-warning' : 'badge-error'}`}>
+                    {item.status === 'success' ? 'Valid' : item.status === 'used' ? 'Pakai' : 'Invalid'}
+                  </span>
+                  <p className="text-xs text-base-content/50 mt-1">{item.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes scan {

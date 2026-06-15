@@ -137,7 +137,8 @@ const eventsList = rows.map((e) => {
 
             <div class="card-actions justify-end mt-auto pt-2">
               <a href={`/dashboard/events/edit/${event.id}`} class="btn btn-sm btn-outline text-primary hover:bg-primary hover:text-white hover:border-primary flex-1">Edit</a>
-              <button class="btn btn-sm btn-outline text-error hover:bg-error hover:text-white hover:border-error flex-1 btn-delete" data-id={event.id} data-title={event.title}>Hapus</button>
+              <a href={`/dashboard/scan?event=${event.id}`} class="btn btn-sm btn-primary flex-1">Scan</a>
+              <button class="btn btn-sm btn-outline text-error hover:bg-error hover:text-white hover:border-error btn-delete" data-id={event.id} data-title={event.title}>Hapus</button>
             </div>
           </div>
         </div>

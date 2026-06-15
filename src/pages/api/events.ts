@@ -2,6 +2,21 @@ import type { APIRoute } from 'astro';
 import { db, initDb } from '../../lib/db';
 import { events } from '../../lib/schema';
 
+export const GET: APIRoute = async () => {
+  try {
+    await initDb();
+    const rows = await db.select().from(events);
+    return new Response(JSON.stringify({ events: rows }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ events: [], error: String(err) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+};
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     await initDb();

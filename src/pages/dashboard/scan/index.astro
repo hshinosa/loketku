@@ -1,21 +1,24 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import ScannerApp from '../../../components/dashboard/ScannerApp';
+
+const url = new URL(Astro.request.url);
+const eventId = url.searchParams.get('event') ?? undefined;
 ---
 
 <Layout title="Scan Tiket | Loketku">
   <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8 text-center">
-      <div class="text-sm breadcrumbs text-gray-500 mb-2 justify-center flex">
+      <div class="text-sm breadcrumbs text-base-content/50 mb-2 justify-center flex">
         <ul>
           <li><a href="/dashboard">Dashboard</a></li>
-          <li class="text-gray-900 font-medium">Scan Tiket</li>
+          <li class="text-base-content font-medium">Scan Tiket</li>
         </ul>
       </div>
-      <h1 class="text-3xl font-bold text-gray-900">Scanner Tiket</h1>
-      <p class="text-gray-500 mt-2">Scan QR code tiket atau masukkan ID tiket secara manual.</p>
+      <h1 class="text-3xl font-bold text-base-content">Scanner Tiket</h1>
+      <p class="text-base-content/60 mt-2">Scan QR code tiket atau masukkan ID tiket secara manual.</p>
     </div>
 
-    <ScannerApp client:load />
+    <ScannerApp client:load initialEventId={eventId} />
   </div>
 </Layout>
