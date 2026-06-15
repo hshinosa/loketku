@@ -22,9 +22,11 @@ export async function initDb() {
       sold INTEGER NOT NULL DEFAULT 0,
       poster TEXT NOT NULL,
       organizer TEXT NOT NULL,
+      scanner_token TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+  await client.execute(`ALTER TABLE events ADD COLUMN scanner_token TEXT`).catch(() => {});
   await client.execute(`
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,

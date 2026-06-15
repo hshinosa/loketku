@@ -135,10 +135,15 @@ const eventsList = rows.map((e) => {
               </div>
             </div>
 
-            <div class="card-actions justify-end mt-auto pt-2">
-              <a href={`/dashboard/events/edit/${event.id}`} class="btn btn-sm btn-outline text-primary hover:bg-primary hover:text-white hover:border-primary flex-1">Edit</a>
-              <a href={`/dashboard/scan?event=${event.id}`} class="btn btn-sm btn-primary flex-1">Scan</a>
-              <button class="btn btn-sm btn-outline text-error hover:bg-error hover:text-white hover:border-error btn-delete" data-id={event.id} data-title={event.title}>Hapus</button>
+            <div class="card-actions mt-auto pt-2">
+              <div class="flex gap-2 mb-2">
+                <a href={`/dashboard/events/edit/${event.id}`} class="btn btn-sm btn-outline text-primary hover:bg-primary hover:text-white hover:border-primary flex-1">Edit</a>
+                <a href={`/dashboard/scan?event=${event.id}`} class="btn btn-sm btn-primary flex-1">Scan</a>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn btn-sm btn-outline btn-info flex-1 btn-share" data-id={event.id} data-title={event.title}>Share Scanner</button>
+                <button class="btn btn-sm btn-outline text-error hover:bg-error hover:text-white hover:border-error flex-1 btn-delete" data-id={event.id} data-title={event.title}>Hapus</button>
+              </div>
             </div>
           </div>
         </div>
@@ -174,18 +179,48 @@ const eventsList = rows.map((e) => {
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
+  <!-- Share Scanner Modal -->
+  <dialog id="share-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Share Scanner untuk Staff</h3>
+      <p class="py-2 text-sm text-base-content/60">Event: <strong id="share-event-title"></strong></p>
+      <p class="text-sm text-base-content/70 mb-4">Kirim link ini ke staff yang akan scan tiket di pintu masuk. Staff tidak perlu login.</p>
+      
+      <div id="share-link-container" class="hidden">
+        <div class="flex gap-2">
+          <input id="share-link-input" type="text" readonly class="input input-bordered flex-1 bg-base-200 text-sm font-mono" />
+          <button id="copy-link-btn" class="btn btn-primary btn-sm">Copy</button>
+        </div>
+        <p id="copy-feedback" class="text-xs text-success mt-2 hidden">Link berhasil di-copy!</p>
+      </div>
+
+      <div id="share-loading" class="text-center py-4 hidden">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+        <p class="text-sm text-base-content/60 mt-2">Generating link...</p>
+      </div>
+
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-ghost">Tutup</button>
+        </form>
+        <button id="generate-link-btn" class="btn btn-primary">Generate Link Baru</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const modal = document.getElementById('delete-modal') as HTMLDialogElement;
-      const titleEl = document.getElementById('delete-event-title');
+      const deleteModal = document.getElementById('delete-modal') as HTMLDialogElement;
+      const deleteTitleEl = document.getElementById('delete-event-title');
       const confirmBtn = document.getElementById('confirm-delete');
       let deleteTargetId = '';
 
       document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', () => {
           deleteTargetId = (btn as HTMLElement).dataset.id ?? '';
-          if (titleEl) titleEl.textContent = (btn as HTMLElement).dataset.title ?? '';
-          modal?.showModal();
+          if (deleteTitleEl) deleteTitleEl.textContent = (btn as HTMLElement).dataset.title ?? '';
+          deleteModal?.showModal();
         });
       });
 
@@ -195,11 +230,63 @@ const eventsList = rows.map((e) => {
         try {
           const res = await fetch(`/api/events/${deleteTargetId}`, { method: 'DELETE' });
           const data = await res.json();
-          if (res.ok && data.ok) {
-            window.location.reload();
-          }
+          if (res.ok && data.ok) window.location.reload();
         } catch (err) {
           console.error('Delete failed:', err);
+        }
+      });
+
+      const shareModal = document.getElementById('share-modal') as HTMLDialogElement;
+      const shareTitleEl = document.getElementById('share-event-title');
+      const shareLinkContainer = document.getElementById('share-link-container');
+      const shareLinkInput = document.getElementById('share-link-input') as HTMLInputElement;
+      const shareLoading = document.getElementById('share-loading');
+      const generateBtn = document.getElementById('generate-link-btn');
+      const copyBtn = document.getElementById('copy-link-btn');
+      const copyFeedback = document.getElementById('copy-feedback');
+      let shareEventId = '';
+
+      document.querySelectorAll('.btn-share').forEach(btn => {
+        btn.addEventListener('click', () => {
+          shareEventId = (btn as HTMLElement).dataset.id ?? '';
+          if (shareTitleEl) shareTitleEl.textContent = (btn as HTMLElement).dataset.title ?? '';
+          if (shareLinkContainer) shareLinkContainer.classList.add('hidden');
+          if (copyFeedback) copyFeedback.classList.add('hidden');
+          shareModal?.showModal();
+        });
+      });
+
+      generateBtn?.addEventListener('click', async () => {
+        if (!shareEventId) return;
+        if (shareLoading) shareLoading.classList.remove('hidden');
+        if (shareLinkContainer) shareLinkContainer.classList.add('hidden');
+        
+        try {
+          const res = await fetch('/api/scanner/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eventId: shareEventId }),
+          });
+          const data = await res.json();
+          if (data.ok && shareLinkInput) {
+            shareLinkInput.value = data.shareUrl;
+            if (shareLinkContainer) shareLinkContainer.classList.remove('hidden');
+          }
+        } catch (err) {
+          console.error('Share failed:', err);
+        } finally {
+          if (shareLoading) shareLoading.classList.add('hidden');
+        }
+      });
+
+      copyBtn?.addEventListener('click', () => {
+        if (shareLinkInput) {
+          navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+            if (copyFeedback) {
+              copyFeedback.classList.remove('hidden');
+              setTimeout(() => copyFeedback.classList.add('hidden'), 2000);
+            }
+          });
         }
       });
     });

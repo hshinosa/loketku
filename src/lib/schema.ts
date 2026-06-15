@@ -11,6 +11,7 @@ export const events = sqliteTable('events', {
   sold: integer('sold').notNull().default(0),
   poster: text('poster').notNull(),
   organizer: text('organizer').notNull(),
+  scannerToken: text('scanner_token'),
   createdAt: text('created_at').notNull().default(new Date().toISOString()),
 });
 
