@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db, initDb } from './db';
 import { events, transactions, tickets } from './schema';
 
 const seedEvents = [
@@ -85,6 +85,8 @@ const seedTickets = [
 ];
 
 export async function seed() {
+  await initDb();
+
   await db.delete(tickets);
   await db.delete(transactions);
   await db.delete(events);

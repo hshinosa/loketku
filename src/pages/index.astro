@@ -1,10 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import EventCard from '../components/dashboard/EventCard';
-import { db } from '../lib/db';
+import { db, initDb } from '../lib/db';
 import { events } from '../lib/schema';
 import { seed } from '../lib/seed';
 
+await initDb();
 const existing = await db.select().from(events).limit(1);
 if (existing.length === 0) {
   await seed();
