@@ -401,28 +401,32 @@ const upcomingEvents = eventRows.slice(0, 3).map((e) => ({
       
       <div class="form-control w-full mb-4">
         <label class="label">
-          <span class="label-text">Jumlah Penarikan (Rp)</span>
-          <span class="label-text-alt text-gray-500">Maks: {stats.totalRevenue}</span>
+          <span class="label-text">Jumlah Penarikan</span>
+          <span class="label-text-alt text-base-content/50">Maks: {stats.totalRevenue}</span>
         </label>
-        <input type="text" placeholder="Contoh: 5000000" class="input input-bordered w-full" />
+        <div class="flex items-center gap-2">
+          <span class="text-base-content/60 font-medium">Rp</span>
+          <input id="withdraw-amount" type="text" placeholder="0" class="input input-bordered w-full text-right font-mono text-lg" />
+        </div>
+        <label class="label">
+          <span id="withdraw-terbilang" class="label-text-alt text-base-content/50 italic"></span>
+        </label>
       </div>
 
       <div class="form-control w-full mb-6">
         <label class="label">
           <span class="label-text">Rekening Tujuan</span>
         </label>
-        <select class="select select-bordered w-full">
-          <option disabled selected>Pilih rekening</option>
-          <option>BCA - 1234567890 a.n. Organizer</option>
-          <option>Mandiri - 0987654321 a.n. Organizer</option>
-        </select>
+        <div class="bg-base-200 rounded-lg p-3 text-sm">
+          <p class="font-medium text-base-content" id="withdraw-bank-display">Belum ada rekening terdaftar</p>
+          <p class="text-base-content/60" id="withdraw-bank-detail"></p>
+        </div>
       </div>
 
       <div class="modal-action">
         <form method="dialog">
-          <!-- if there is a button in form, it will close the modal -->
           <button class="btn mr-2">Batal</button>
-          <button class="btn btn-primary">Proses Penarikan</button>
+          <button class="btn btn-primary" id="btn-withdraw">Proses Penarikan</button>
         </form>
       </div>
     </div>
@@ -430,5 +434,50 @@ const upcomingEvents = eventRows.slice(0, 3).map((e) => ({
       <button>close</button>
     </form>
   </dialog>
+
+  <script>
+    const withdrawInput = document.getElementById('withdraw-amount') as HTMLInputElement;
+    const withdrawTerbilang = document.getElementById('withdraw-terbilang');
+    const withdrawBankDisplay = document.getElementById('withdraw-bank-display');
+    const withdrawBankDetail = document.getElementById('withdraw-bank-detail');
+    const withdrawModal = document.getElementById('withdraw_modal') as HTMLDialogElement;
+
+    if (withdrawInput) {
+      withdrawInput.addEventListener('input', () => {
+        const raw = withdrawInput.value.replace(/\D/g, '');
+        const formatted = new Intl.NumberFormat('id-ID').format(Number(raw));
+        withdrawInput.value = raw ? formatted : '';
+        
+        if (withdrawTerbilang) {
+          const num = Number(raw);
+          if (num >= 1000000) {
+            withdrawTerbilang.textContent = `${(num / 1000000).toFixed(1)} juta`;
+          } else if (num >= 1000) {
+            withdrawTerbilang.textContent = `${(num / 1000).toFixed(0)} ribu`;
+          } else {
+            withdrawTerbilang.textContent = '';
+          }
+        }
+      });
+    }
+
+    if (withdrawModal) {
+      const observer = new MutationObserver(() => {
+        if (withdrawModal.open) {
+          try {
+            const userStr = localStorage.getItem('loketku_user');
+            if (userStr) {
+              const user = JSON.parse(userStr);
+              if (user.bankName && user.bankAccount) {
+                if (withdrawBankDisplay) withdrawBankDisplay.textContent = `${user.bankName} - ${user.bankAccount}`;
+                if (withdrawBankDetail) withdrawBankDetail.textContent = `a.n. ${user.bankAccountName || user.name}`;
+              }
+            }
+          } catch {}
+        }
+      });
+      observer.observe(withdrawModal, { attributes: true, attributeFilter: ['open'] });
+    }
+  </script>
 
 </Layout>
