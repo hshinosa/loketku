@@ -1,0 +1,6 @@
+{
+  "buildCommand": "astro build",
+  "outputDirectory": "dist",
+  "framework": "astro",
+  "regions": ["sin1"]
+}
