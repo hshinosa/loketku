@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import EventCard from '../components/dashboard/EventCard';
+import SearchBar from '../components/SearchBar';
 import { db, initDb } from '../lib/db';
 import { events } from '../lib/schema';
 import { seed } from '../lib/seed';
@@ -31,10 +32,7 @@ const mockEvents = rows.map((e) => ({
           <h1 class="text-3xl font-bold text-base-content mb-1">Event Terpopuler</h1>
           <p class="text-base-content/60">Temukan dan beli tiket event favoritmu</p>
         </div>
-        <div class="join w-full sm:w-auto sm:max-w-xs">
-          <input type="text" placeholder="Cari event..." class="input input-bordered input-sm join-item flex-1" />
-          <button class="btn btn-primary btn-sm join-item">Cari</button>
-        </div>
+        <SearchBar client:load />
       </div>
 
       {mockEvents.length > 0 ? (
