@@ -50,6 +50,7 @@ export default function CreateEventForm() {
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [imageFileName, setImageFileName] = useState('');
@@ -133,15 +134,30 @@ export default function CreateEventForm() {
   // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (currentStep !== 4) return;
+
+    if (!title.trim() || !date || !time || !location.trim() || !imageUrl) {
+      setSubmitError('Lengkapi semua data wajib sebelum publish');
+      return;
+    }
+
     setSubmitError(null);
     setIsSubmitting(true);
+
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('loketku_user') : null;
+    let organizerName = 'Loketku Organizer';
+    if (userStr) {
+      try { organizerName = JSON.parse(userStr).name || organizerName; } catch {}
+    }
 
     const payload = {
       title,
       description: description || title,
-      date: (date && time) ? new Date(`${date}T${time}`).toISOString() : new Date().toISOString(),
+      date: new Date(`${date}T${time}`).toISOString(),
       location,
       imageUrl,
+      organizer: organizerName,
       categories,
     };
 
@@ -157,16 +173,41 @@ export default function CreateEventForm() {
         setIsSubmitting(false);
         return;
       }
-      window.location.href = '/dashboard/events';
+      setIsSubmitting(false);
+      setSubmitSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setSubmitError('Gagal terhubung ke server: ' + String(err));
       setIsSubmitting(false);
     }
   };
 
+  if (submitSuccess) {
+    return (
+      <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-8 text-center space-y-5 animate-in">
+        <div className="w-16 h-16 mx-auto rounded-full bg-success/10 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-success"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-base-content">Event Berhasil Dipublish!</h2>
+          <p className="text-base-content/60 mt-2">"{title}" sudah aktif dan siap menerima pembeli tiket.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+          <a href="/dashboard/events" className="btn btn-primary gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>
+            Lihat Daftar Event
+          </a>
+          <a href="/dashboard/events/create" className="btn btn-outline gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Buat Event Lain
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Stepper */}
       <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-6">
         <div className="flex items-center justify-between">
           {STEPS.map((step, i) => (
