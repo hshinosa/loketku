@@ -48,6 +48,20 @@ export default function ScannerApp({ initialEventId }: Props) {
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
+  const handleFillByStatus = async (status: 'valid' | 'used' | 'invalid') => {
+    try {
+      const res = await fetch(`/api/tickets/by-status?status=${status}`);
+      const data = await res.json();
+      if (data.ok && data.ticket) {
+        setTicketId(data.ticket.id);
+      } else {
+        setTicketId(`NO_${status.toUpperCase()}_TICKET`);
+      }
+    } catch {
+      setTicketId(`ERROR_FETCH`);
+    }
+  };
+
   const handleAction = async (action: 'valid' | 'invalid' | 'used') => {
     if (!ticketId.trim()) return;
     setIsProcessing(true);
@@ -216,33 +230,43 @@ export default function ScannerApp({ initialEventId }: Props) {
         />
       </form>
 
-      {/* 3 Action Buttons — selalu tampil */}
+      {/* 3 Placeholder Buttons — klik untuk auto-fill tiket by status */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <button
-          onClick={() => handleAction('valid')}
-          className="btn btn-success text-white btn-sm h-auto py-3 flex-col gap-1"
-          disabled={isProcessing || !ticketId.trim()}
+          onClick={() => handleFillByStatus('valid')}
+          className="btn btn-outline btn-success btn-sm h-auto py-3 flex-col gap-1"
+          disabled={isProcessing}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-          <span className="text-xs">Valid</span>
+          <span className="text-xs">Ambil Valid</span>
         </button>
         <button
-          onClick={() => handleAction('used')}
-          className="btn btn-warning text-white btn-sm h-auto py-3 flex-col gap-1"
-          disabled={isProcessing || !ticketId.trim()}
+          onClick={() => handleFillByStatus('used')}
+          className="btn btn-outline btn-warning btn-sm h-auto py-3 flex-col gap-1"
+          disabled={isProcessing}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span className="text-xs">Digunakan</span>
+          <span className="text-xs">Ambil Used</span>
         </button>
         <button
-          onClick={() => handleAction('invalid')}
-          className="btn btn-error text-white btn-sm h-auto py-3 flex-col gap-1"
-          disabled={isProcessing || !ticketId.trim()}
+          onClick={() => handleFillByStatus('invalid')}
+          className="btn btn-outline btn-error btn-sm h-auto py-3 flex-col gap-1"
+          disabled={isProcessing}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          <span className="text-xs">Tidak Valid</span>
+          <span className="text-xs">Ambil Invalid</span>
         </button>
       </div>
+
+      {/* Scan Button */}
+      <button
+        onClick={() => handleAction('valid')}
+        className="btn btn-primary w-full mb-4"
+        disabled={isProcessing || !ticketId.trim()}
+      >
+        {isProcessing ? <span className="loading loading-spinner loading-sm"></span> : null}
+        Scan Tiket
+      </button>
 
       {/* Scan History */}
       {scanHistory.length > 0 && (
