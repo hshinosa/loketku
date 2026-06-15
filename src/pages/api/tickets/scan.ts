@@ -28,6 +28,18 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     if (action === 'valid') {
+      if (ticket.status === 'used') {
+        return new Response(
+          JSON.stringify({ ok: false, message: 'Tiket sudah digunakan sebelumnya', ticket }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      if (ticket.status === 'invalid') {
+        return new Response(
+          JSON.stringify({ ok: false, message: 'Tiket tidak valid', ticket }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
       await db.update(tickets).set({ status: 'used' }).where(eq(tickets.id, ticketId));
       await db.update(transactions).set({ status: 'used' }).where(eq(transactions.id, ticket.transactionId));
       return new Response(
