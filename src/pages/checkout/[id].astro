@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import CheckoutForm from '../../components/dashboard/CheckoutForm';
 import { db, initDb } from '../../lib/db';
-import { events, tickets } from '../../lib/schema';
+import { events } from '../../lib/schema';
 import { eq } from 'drizzle-orm';
 
 const { id } = Astro.params;
@@ -13,28 +13,19 @@ await initDb();
 const url = new URL(Astro.request.url);
 const quantity = Math.max(1, Math.min(10, parseInt(url.searchParams.get('quantity') ?? '1', 10) || 1));
 
-// [id] is a ticket ID — fetch ticket + associated event
-const ticket = await db
-  .select()
-  .from(tickets)
-  .where(eq(tickets.id, id as string))
-  .get();
-
-if (!ticket) {
-  return Astro.redirect('/');
-}
-
+// [id] is an event ID — fetch event directly
 const event = await db
   .select()
   .from(events)
-  .where(eq(events.id, ticket.eventId))
+  .where(eq(events.id, id as string))
   .get();
 
 if (!event) {
   return Astro.redirect('/');
 }
 
-const unitPrice = Number(ticket.price);
+const remaining = event.quota - event.sold;
+const unitPrice = event.price;
 const subtotal = unitPrice * quantity;
 const adminFee = 2500;
 const total = subtotal + adminFee;
@@ -78,7 +69,7 @@ const formatCurrency = (amount: number) => {
             
             <CheckoutForm
               client:load
-              ticketId={ticket.id}
+              ticketId={event.id}
               eventId={event.id}
               quantity={quantity}
               totalAmount={total}
@@ -92,11 +83,11 @@ const formatCurrency = (amount: number) => {
           <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
             <h2 class="text-xl font-bold text-gray-900 mb-4">Ringkasan Pesanan</h2>
             
-            <div class="flex gap-4 mb-6">
-              <img src={event.poster || `https://picsum.photos/seed/${event.id}/200/200`} alt={event.title} class="w-20 h-20 object-cover rounded-lg" />
+              <div class="flex gap-4 mb-6">
+              <img src={event.poster} alt={event.title} class="w-20 h-20 object-cover rounded-lg" />
               <div>
-                <h3 class="font-semibold text-gray-900 line-clamp-2">{event.title}</h3>
-                <p class="text-sm text-gray-500 mt-1">{formattedDate}</p>
+                <h3 class="font-semibold text-base-content line-clamp-2">{event.title}</h3>
+                <p class="text-sm text-base-content/60 mt-1">{formattedDate}</p>
               </div>
             </div>
 
@@ -104,19 +95,19 @@ const formatCurrency = (amount: number) => {
 
             <div class="space-y-3 my-4">
               <div class="flex justify-between text-sm">
-                <span class="text-gray-600">{ticket.name} (x{quantity})</span>
-                <span class="font-medium text-gray-900">{formatCurrency(subtotal)}</span>
+                <span class="text-base-content/60">Tiket Regular (x{quantity})</span>
+                <span class="font-medium text-base-content">{formatCurrency(subtotal)}</span>
               </div>
               <div class="flex justify-between text-sm">
-                <span class="text-gray-600">Biaya Admin</span>
-                <span class="font-medium text-gray-900">{formatCurrency(adminFee)}</span>
+                <span class="text-base-content/60">Biaya Admin</span>
+                <span class="font-medium text-base-content">{formatCurrency(adminFee)}</span>
               </div>
             </div>
 
             <div class="divider my-2"></div>
 
             <div class="flex justify-between items-center mb-6">
-              <span class="font-bold text-gray-900">Total Pembayaran</span>
+              <span class="font-bold text-base-content">Total Pembayaran</span>
               <span class="text-xl font-bold text-primary">{formatCurrency(total)}</span>
             </div>
 

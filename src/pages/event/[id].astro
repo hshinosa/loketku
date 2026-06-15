@@ -15,11 +15,15 @@ if (!event) {
   return Astro.redirect('/');
 }
 
-const ticketList = await db
-  .select()
-  .from(ticketsTable)
-  .where(eq(ticketsTable.eventId, id as string))
-  .all();
+// Build a single ticket option from the event (current schema: 1 price per event)
+const remaining = event.quota - event.sold;
+const ticketOptions = remaining > 0 ? [{
+  id: event.id,
+  name: 'Regular',
+  price: event.price,
+  quota: remaining,
+  description: event.description,
+}] : [];
 
 const formattedDate = new Date(event.date).toLocaleDateString('id-ID', {
   weekday: 'long',
@@ -103,13 +107,7 @@ const formattedTime = new Date(event.date).toLocaleTimeString('id-ID', {
           <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
             <TicketSelector
               client:load
-              tickets={ticketList.map(t => ({
-                id: t.id,
-                name: t.name,
-                price: Number(t.price),
-                quota: t.quota,
-                description: t.description,
-              }))}
+              tickets={ticketOptions}
               eventId={event.id}
             />
           </div>
