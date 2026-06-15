@@ -28,6 +28,8 @@ export default function CreateEventForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [imageFileName, setImageFileName] = useState('');
 
   // Ticket category handlers
   const handleAddCategory = () => {
@@ -69,7 +71,36 @@ export default function CreateEventForm() {
   // Format helpers
   const formatRupiah = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
   const formatDate = (iso: string) => {
-    try { return new Date(iso).toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return iso; }
+    try { return new Date(iso).toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }); } catch { return iso; }
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setImageFileName(file.name);
+    setImageError(false);
+    const dataUrl = await fileToDataUrl(file);
+    setImageUrl(dataUrl);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageFile(file);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleImageFile(file);
   };
 
   const totalQuota = categories.reduce((s, c) => s + c.quota, 0);
@@ -158,7 +189,6 @@ export default function CreateEventForm() {
               <p className="text-sm text-base-content/50 mt-1">Ceritakan tentang event Anda</p>
             </div>
 
-            {/* Nama Event + Lokasi sebaris */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-medium">Nama Event *</span></label>
@@ -184,7 +214,6 @@ export default function CreateEventForm() {
               </div>
             </div>
 
-            {/* Tanggal + Jam sebaris */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-medium">Tanggal *</span></label>
@@ -208,7 +237,6 @@ export default function CreateEventForm() {
               </div>
             </div>
 
-            {/* Deskripsi full width, textarea panjang */}
             <div className="form-control w-full">
               <label className="label">
                 <span className="label-text font-medium">Deskripsi</span>
@@ -233,25 +261,86 @@ export default function CreateEventForm() {
               <p className="text-sm text-base-content/50 mt-1">Upload gambar poster atau banner event Anda</p>
             </div>
 
+            <input
+              type="file"
+              id="image-file-input"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileInput}
+            />
+
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('image-file-input')?.click()}
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? 'border-primary bg-primary/5 scale-[1.02]'
+                  : imageUrl
+                  ? 'border-base-300 bg-base-200/50 hover:border-primary/50'
+                  : 'border-base-300 hover:border-primary/50 hover:bg-base-200/30'
+              }`}
+            >
+              {imageUrl && !imageError ? (
+                <div className="space-y-3">
+                  <div className="relative rounded-lg overflow-hidden max-h-64 mx-auto">
+                    <img
+                      src={imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-contain max-h-64"
+                      onError={() => setImageError(true)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-base-content/60">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" /></svg>
+                    <span>{imageFileName || 'Gambar terpilih'}</span>
+                  </div>
+                  <p className="text-xs text-base-content/40">Klik atau drag untuk mengganti gambar</p>
+                </div>
+              ) : imageError ? (
+                <div className="space-y-2">
+                  <div className="text-4xl">⚠️</div>
+                  <p className="text-base-content/50 text-sm">Gambar tidak bisa dimuat</p>
+                  <p className="text-xs text-base-content/40">Klik atau drag file gambar untuk mencoba lagi</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center transition-colors ${isDragging ? 'bg-primary/20' : 'bg-base-200'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`w-8 h-8 transition-colors ${isDragging ? 'text-primary' : 'text-base-content/40'}`}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-base-content">
+                      {isDragging ? 'Lepas gambar di sini' : 'Drag & drop gambar di sini'}
+                    </p>
+                    <p className="text-sm text-base-content/50 mt-1">atau <span className="text-primary font-medium">klik untuk pilih file</span></p>
+                  </div>
+                  <p className="text-xs text-base-content/40">PNG, JPG, WEBP hingga 5MB</p>
+                </div>
+              )}
+            </div>
+
+            <div className="divider text-xs text-base-content/40">atau pakai URL</div>
+
             <div className="form-control w-full">
-              <label className="label"><span className="label-text font-medium">URL Gambar *</span></label>
+              <label className="label"><span className="label-text font-medium">URL Gambar</span></label>
               <input
                 type="url"
                 placeholder="https://images.unsplash.com/..."
                 className="input input-bordered w-full"
-                value={imageUrl}
-                onChange={(e) => { setImageUrl(e.target.value); setImageError(false); }}
-                required
+                value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                onChange={(e) => { setImageUrl(e.target.value); setImageError(false); setImageFileName(''); }}
               />
               <label className="label">
-                <span className="label-text-alt text-base-content/40">Gunakan URL dari Unsplash, Imgur, atau hosting gambar lainnya</span>
+                <span className="label-text-alt text-base-content/40">Paste URL dari Unsplash, Imgur, atau hosting lainnya</span>
               </label>
             </div>
 
-            {/* Live Preview */}
             {imageUrl && !imageError && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-base-content/60">Preview</p>
+                <p className="text-sm font-medium text-base-content/60">Preview di Event Card</p>
                 <div className="relative rounded-xl overflow-hidden border border-base-200 bg-base-200 aspect-video">
                   <img
                     src={imageUrl}
@@ -268,18 +357,15 @@ export default function CreateEventForm() {
               </div>
             )}
 
-            {imageError && (
-              <div className="alert alert-warning">
-                <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <span>Gambar tidak bisa dimuat. Periksa URL-nya.</span>
-              </div>
-            )}
-
-            {!imageUrl && (
-              <div className="border-2 border-dashed border-base-300 rounded-xl p-12 text-center">
-                <div className="text-4xl mb-3">🖼️</div>
-                <p className="text-base-content/50 text-sm">Masukkan URL gambar untuk melihat preview</p>
-              </div>
+            {imageUrl && (
+              <button
+                type="button"
+                onClick={() => { setImageUrl(''); setImageFileName(''); setImageError(false); }}
+                className="btn btn-outline btn-error btn-sm w-full"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                Hapus Gambar
+              </button>
             )}
           </div>
         )}
@@ -363,7 +449,6 @@ export default function CreateEventForm() {
               ))}
             </div>
 
-            {/* Summary */}
             <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 flex flex-wrap gap-4 text-sm">
               <div>
                 <span className="text-base-content/50">Total Kuota:</span>{' '}
@@ -388,7 +473,6 @@ export default function CreateEventForm() {
               <p className="text-sm text-base-content/50 mt-1">Periksa kembali sebelum mempublikasikan event Anda</p>
             </div>
 
-            {/* Event Preview Card */}
             <div className="rounded-xl overflow-hidden border border-base-200 shadow-sm">
               <div className="relative aspect-video bg-base-200">
                 {imageUrl && !imageError ? (
@@ -403,7 +487,6 @@ export default function CreateEventForm() {
               </div>
 
               <div className="p-5 bg-base-100 space-y-4">
-                {/* Info Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex items-start gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-primary mt-0.5 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
@@ -428,7 +511,6 @@ export default function CreateEventForm() {
                   </div>
                 )}
 
-                {/* Ticket Categories */}
                 <div className="border-t border-base-200 pt-4">
                   <p className="text-xs text-base-content/50 mb-2">Kategori Tiket</p>
                   <div className="space-y-2">
@@ -447,7 +529,6 @@ export default function CreateEventForm() {
                   </div>
                 </div>
 
-                {/* Totals */}
                 <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
                   <div className="flex justify-between text-sm">
                     <span className="text-base-content/60">Total Tiket</span>
@@ -466,7 +547,6 @@ export default function CreateEventForm() {
         )}
       </div>
 
-      {/* Error */}
       {submitError && (
         <div className="alert alert-error">
           <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -474,7 +554,6 @@ export default function CreateEventForm() {
         </div>
       )}
 
-      {/* Navigation Buttons */}
       <div className="flex items-center justify-between">
         <button
           type="button"
