@@ -63,6 +63,7 @@ const { title } = Astro.props;
 									</li>
 									<li id="nav-dashboard" class="hidden"><a href="/dashboard">Dashboard Organizer</a></li>
 									<li id="nav-scan" class="hidden"><a href="/dashboard/scan">Scanner Tiket</a></li>
+									<li id="nav-withdraw" class="hidden"><a href="/dashboard/withdraw">Tarik Dana</a></li>
 									<li id="nav-tickets" class="hidden"><a href="/tickets">Tiket Saya</a></li>
 									<li><a href="/settings">Pengaturan Profil</a></li>
 									<li><button id="logout-btn" class="text-error">Keluar</button></li>
@@ -99,6 +100,7 @@ const { title } = Astro.props;
 				const authUserMenu = document.getElementById('auth-user-menu');
 				const navDashboard = document.getElementById('nav-dashboard');
 				const navScan = document.getElementById('nav-scan');
+				const navWithdraw = document.getElementById('nav-withdraw');
 				const navTickets = document.getElementById('nav-tickets');
 				const userNameDisplay = document.getElementById('user-name-display');
 				const userRoleDisplay = document.getElementById('user-role-display');
@@ -123,12 +125,14 @@ const { title } = Astro.props;
 					// Reset navigation visibility
 					if (navDashboard) navDashboard.classList.add('hidden');
 					if (navScan) navScan.classList.add('hidden');
+					if (navWithdraw) navWithdraw.classList.add('hidden');
 					if (navTickets) navTickets.classList.add('hidden');
 
 					// Update navigation based on role
 					if (user.role === 'organizer') {
 						if (navDashboard) navDashboard.classList.remove('hidden');
 						if (navScan) navScan.classList.remove('hidden');
+						if (navWithdraw) navWithdraw.classList.remove('hidden');
 					} else {
 						// Buyer role
 						if (navTickets) navTickets.classList.remove('hidden');

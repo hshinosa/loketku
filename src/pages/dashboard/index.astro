@@ -94,7 +94,7 @@ const upcomingEvents = eventRows.slice(0, 3).map((e) => ({
               </span>
               <span class="text-gray-500 ml-2">vs bulan lalu</span>
             </div>
-            <button onclick="withdraw_modal.showModal()" class="btn btn-xs btn-primary btn-outline">Tarik Dana</button>
+            <a href="/dashboard/withdraw" class="btn btn-xs btn-primary btn-outline">Tarik Dana</a>
           </div>
         </div>
       </div>
@@ -393,91 +393,5 @@ const upcomingEvents = eventRows.slice(0, 3).map((e) => ({
       </div>
     </div>
   </div>
-  <!-- Withdraw Modal -->
-  <dialog id="withdraw_modal" class="modal">
-    <div class="modal-box">
-      <h3 class="font-bold text-lg">Tarik Dana</h3>
-      <p class="py-4">Masukkan jumlah dana yang ingin ditarik ke rekening Anda.</p>
-      
-      <div class="form-control w-full mb-4">
-        <label class="label">
-          <span class="label-text">Jumlah Penarikan</span>
-          <span class="label-text-alt text-base-content/50">Maks: {stats.totalRevenue}</span>
-        </label>
-        <div class="flex items-center gap-2">
-          <span class="text-base-content/60 font-medium">Rp</span>
-          <input id="withdraw-amount" type="text" placeholder="0" class="input input-bordered w-full text-right font-mono text-lg" />
-        </div>
-        <label class="label">
-          <span id="withdraw-terbilang" class="label-text-alt text-base-content/50 italic"></span>
-        </label>
-      </div>
-
-      <div class="form-control w-full mb-6">
-        <label class="label">
-          <span class="label-text">Rekening Tujuan</span>
-        </label>
-        <div class="bg-base-200 rounded-lg p-3 text-sm">
-          <p class="font-medium text-base-content" id="withdraw-bank-display">Belum ada rekening terdaftar</p>
-          <p class="text-base-content/60" id="withdraw-bank-detail"></p>
-        </div>
-      </div>
-
-      <div class="modal-action">
-        <form method="dialog">
-          <button class="btn mr-2">Batal</button>
-          <button class="btn btn-primary" id="btn-withdraw">Proses Penarikan</button>
-        </form>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop">
-      <button>close</button>
-    </form>
-  </dialog>
-
-  <script>
-    const withdrawInput = document.getElementById('withdraw-amount') as HTMLInputElement;
-    const withdrawTerbilang = document.getElementById('withdraw-terbilang');
-    const withdrawBankDisplay = document.getElementById('withdraw-bank-display');
-    const withdrawBankDetail = document.getElementById('withdraw-bank-detail');
-    const withdrawModal = document.getElementById('withdraw_modal') as HTMLDialogElement;
-
-    if (withdrawInput) {
-      withdrawInput.addEventListener('input', () => {
-        const raw = withdrawInput.value.replace(/\D/g, '');
-        const formatted = new Intl.NumberFormat('id-ID').format(Number(raw));
-        withdrawInput.value = raw ? formatted : '';
-        
-        if (withdrawTerbilang) {
-          const num = Number(raw);
-          if (num >= 1000000) {
-            withdrawTerbilang.textContent = `${(num / 1000000).toFixed(1)} juta`;
-          } else if (num >= 1000) {
-            withdrawTerbilang.textContent = `${(num / 1000).toFixed(0)} ribu`;
-          } else {
-            withdrawTerbilang.textContent = '';
-          }
-        }
-      });
-    }
-
-    if (withdrawModal) {
-      const observer = new MutationObserver(() => {
-        if (withdrawModal.open) {
-          try {
-            const userStr = localStorage.getItem('loketku_user');
-            if (userStr) {
-              const user = JSON.parse(userStr);
-              if (user.bankName && user.bankAccount) {
-                if (withdrawBankDisplay) withdrawBankDisplay.textContent = `${user.bankName} - ${user.bankAccount}`;
-                if (withdrawBankDetail) withdrawBankDetail.textContent = `a.n. ${user.bankAccountName || user.name}`;
-              }
-            }
-          } catch {}
-        }
-      });
-      observer.observe(withdrawModal, { attributes: true, attributeFilter: ['open'] });
-    }
-  </script>
 
 </Layout>
