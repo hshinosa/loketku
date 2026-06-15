@@ -24,10 +24,18 @@ export default function RegisterForm() {
     setIsLoading(true);
 
     setTimeout(() => {
+      let users: any[] = [];
+      try {
+        users = JSON.parse(localStorage.getItem('loketku_users') ?? '[]');
+      } catch {}
+      users.push({ name, email, password, phone: '', role });
+      localStorage.setItem('loketku_users', JSON.stringify(users));
+
       localStorage.setItem('loketku_user', JSON.stringify({
         role,
         email,
         name,
+        phone: '',
         isLoggedIn: true,
       }));
 
