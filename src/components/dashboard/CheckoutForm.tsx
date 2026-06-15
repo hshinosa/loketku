@@ -26,6 +26,7 @@ export default function CheckoutForm({ ticketId, eventId, quantity, totalAmount 
           ...prev,
           name: user.name ?? '',
           email: user.email ?? '',
+          whatsapp: user.phone ?? '',
         }));
       }
     } catch {}
