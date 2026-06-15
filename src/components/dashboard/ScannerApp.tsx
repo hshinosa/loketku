@@ -67,7 +67,7 @@ export default function ScannerApp({ initialEventId }: Props) {
     setIsProcessing(true);
     setIsScanning(false);
 
-    const labels: Record<string, string> = { valid: 'Tiket Valid ✓', invalid: 'Tiket Tidak Valid', used: 'Sudah Digunakan' };
+    const labels: Record<string, string> = { valid: 'Tiket Valid', invalid: 'Tiket Tidak Valid', used: 'Sudah Digunakan' };
     const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
     try {
@@ -122,7 +122,7 @@ export default function ScannerApp({ initialEventId }: Props) {
     handleAction('valid');
   };
 
-  const totalScans = scanHistory.filter(h => h.action.includes('Valid ✓')).length;
+  const totalScans = scanHistory.filter(h => h.action === 'Tiket Valid').length;
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><span className="loading loading-spinner loading-lg text-primary"></span></div>;
@@ -281,7 +281,7 @@ export default function ScannerApp({ initialEventId }: Props) {
                 </div>
                 <div className="text-right">
                   <span className={`badge badge-sm ${
-                    item.action.includes('Valid ✓') ? 'badge-success' : item.action.includes('Digunakan') ? 'badge-warning' : 'badge-error'
+                    item.action === 'Tiket Valid' ? 'badge-success' : item.action.includes('Digunakan') ? 'badge-warning' : 'badge-error'
                   }`}>{item.action}</span>
                   <p className="text-xs text-base-content/50 mt-0.5">{item.time}</p>
                 </div>
