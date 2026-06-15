@@ -71,7 +71,7 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
           <div class="flex flex-col items-center justify-center py-4 mb-6 border-b border-dashed border-base-300">
             <div class="bg-white p-3 rounded-xl shadow-sm border border-base-200 relative">
               <!-- Placeholder for actual QR Code -->
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticket.qrCode}`} alt={`QR Code for ${ticket.id}`} class="w-48 h-48 object-contain" />
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticket.qrCode}`} alt={`QR Code for ${ticket.id}`} class="w-48 h-48 object-contain print:w-32 print:h-32" />
             </div>
             <p class="mt-4 font-mono text-lg font-bold tracking-widest text-base-content">{ticket.id}</p>
             <p class="text-xs text-base-content/50 mt-1">Tunjukkan QR code ini saat masuk</p>
@@ -130,40 +130,39 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
 </Layout>
 
 <style>
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
   @media print {
     * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    body {
-      margin: 0;
-      padding: 0;
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
       background: white !important;
+      min-height: auto !important;
     }
     body * {
-      visibility: hidden;
-    }
-    #ticket-card, #ticket-card * {
-      visibility: visible;
-    }
-    #ticket-card {
-      position: absolute;
-      left: 50%;
-      top: 20px;
-      transform: translateX(-50%);
-      width: 380px;
-      max-width: 100%;
-      box-shadow: none !important;
-      border: 1px solid #ddd;
-      margin: 0;
-      padding: 0;
-    }
-    .no-print, header, footer, nav, .navbar {
       display: none !important;
     }
-    main {
-      padding: 0 !important;
-      margin: 0 !important;
+    #ticket-card, #ticket-card * {
+      display: revert !important;
+    }
+    #ticket-card {
+      position: fixed !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      max-width: 380px !important;
+      margin: 0 auto !important;
+      box-shadow: none !important;
+      border: 1px solid #ddd !important;
+      border-radius: 12px !important;
+      overflow: visible !important;
+      page-break-inside: avoid !important;
     }
   }
 </style>
