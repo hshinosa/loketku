@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProfileForm from '../components/auth/ProfileForm';
+---
+
+<Layout title="Pengaturan Profil | Loketku">
+  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-2xl">
+    <div class="mb-8">
+      <div class="text-sm breadcrumbs text-base-content/50 mb-4">
+        <ul>
+          <li><a href="/">Beranda</a></li>
+          <li class="text-base-content font-medium">Pengaturan Profil</li>
+        </ul>
+      </div>
+      <h1 class="text-3xl font-bold text-base-content">Pengaturan Profil</h1>
+      <p class="text-base-content/60 mt-2">Kelola informasi akun dan password Anda.</p>
+    </div>
+
+    <ProfileForm client:load />
+  </div>
+</Layout>
