@@ -21,43 +21,28 @@ export default function ScannerApp({ initialEventId }: Props) {
 
   const [ticketId, setTicketId] = useState('');
   const [ticketInfo, setTicketInfo] = useState<{
-    id: string;
-    buyerName: string;
-    ticketType: string;
-    event: string;
-    status: string;
+    id: string; buyerName: string; ticketType: string; event: string; status: string;
   } | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<{
-    status: 'success' | 'error';
-    message: string;
-  } | null>(null);
+  const [actionResult, setActionResult] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isScanning, setIsScanning] = useState(true);
   const [scanHistory, setScanHistory] = useState<{ id: string; name: string; action: string; time: string }[]>([]);
 
   useEffect(() => {
-    fetch('/api/events')
-      .then(r => r.json())
-      .then(data => {
-        if (data.events) {
-          const list: EventOption[] = data.events.map((e: any) => ({
-            id: e.id,
-            title: e.title,
-            date: e.date,
-            location: e.location,
-            poster: e.poster,
-            totalTickets: e.quota ?? 0,
-            scannedTickets: e.sold ?? 0,
-          }));
-          setEvents(list);
-          if (initialEventId) {
-            const match = list.find(e => e.id === initialEventId);
-            if (match) setSelectedEvent(match);
-          }
+    fetch('/api/events').then(r => r.json()).then(data => {
+      if (data.events) {
+        const list: EventOption[] = data.events.map((e: any) => ({
+          id: e.id, title: e.title, date: e.date, location: e.location, poster: e.poster,
+          totalTickets: e.quota ?? 0, scannedTickets: e.sold ?? 0,
+        }));
+        setEvents(list);
+        if (initialEventId) {
+          const match = list.find(e => e.id === initialEventId);
+          if (match) setSelectedEvent(match);
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [initialEventId]);
 
   const formatDate = (iso: string) =>
@@ -66,9 +51,9 @@ export default function ScannerApp({ initialEventId }: Props) {
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticketId.trim()) return;
-
     setLookupError(null);
     setTicketInfo(null);
+    setActionResult(null);
     setIsProcessing(true);
 
     try {
@@ -78,30 +63,23 @@ export default function ScannerApp({ initialEventId }: Props) {
         body: JSON.stringify({ ticketId: ticketId.trim() }),
       });
       const data = await res.json();
-
       if (data.ok && data.ticket) {
         setTicketInfo({
-          id: data.ticket.id,
-          buyerName: data.ticket.buyerName,
-          ticketType: data.ticket.ticketType,
-          event: data.ticket.eventTitle,
-          status: data.ticket.status,
+          id: data.ticket.id, buyerName: data.ticket.buyerName,
+          ticketType: data.ticket.ticketType, event: data.ticket.eventTitle, status: data.ticket.status,
         });
+        setIsScanning(false);
       } else {
         setLookupError(data.message ?? 'Tiket tidak ditemukan');
       }
-    } catch {
-      setLookupError('Gagal terhubung ke server');
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch { setLookupError('Gagal terhubung ke server'); }
+    finally { setIsProcessing(false); }
   };
 
   const handleAction = async (action: 'valid' | 'invalid' | 'used') => {
     if (!ticketInfo) return;
     setIsProcessing(true);
-
-    const labels = { valid: 'Tiket Valid', invalid: 'Tiket Tidak Valid', used: 'Sudah Digunakan' };
+    const labels: Record<string, string> = { valid: 'Tiket Valid', invalid: 'Tidak Valid', used: 'Sudah Digunakan' };
     const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
     try {
@@ -111,40 +89,25 @@ export default function ScannerApp({ initialEventId }: Props) {
         body: JSON.stringify({ ticketId: ticketInfo.id, action }),
       });
       const data = await res.json();
-
-      setActionResult({
-        status: data.ok ? 'success' : 'error',
-        message: data.ok ? `${labels[action]} — ${ticketInfo.buyerName}` : (data.message ?? 'Gagal memproses'),
-      });
-
+      setActionResult({ status: data.ok ? 'success' : 'error', message: data.ok ? `${labels[action]} — ${ticketInfo.buyerName}` : (data.message ?? 'Gagal') });
       if (data.ok) {
-        setScanHistory(prev => [{
-          id: ticketInfo.id,
-          name: ticketInfo.buyerName,
-          action: labels[action],
-          time,
-        }, ...prev].slice(0, 50));
+        setScanHistory(prev => [{ id: ticketInfo.id, name: ticketInfo.buyerName, action: labels[action], time }, ...prev].slice(0, 50));
       }
-    } catch {
-      setActionResult({ status: 'error', message: 'Gagal terhubung ke server' });
-    }
+    } catch { setActionResult({ status: 'error', message: 'Gagal terhubung ke server' }); }
 
     setTimeout(() => {
       setActionResult(null);
       setTicketInfo(null);
       setTicketId('');
+      setIsScanning(true);
       setIsProcessing(false);
-    }, 3000);
+    }, 2500);
   };
 
   const totalScans = scanHistory.length;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><span className="loading loading-spinner loading-lg text-primary"></span></div>;
   }
 
   if (!selectedEvent) {
@@ -159,9 +122,7 @@ export default function ScannerApp({ initialEventId }: Props) {
             {events.map(ev => (
               <button key={ev.id} onClick={() => setSelectedEvent(ev)}
                 className="card card-side bg-base-100 shadow-sm border border-base-200 hover:border-primary hover:shadow-md transition-all text-left">
-                <figure className="w-24 h-24 flex-shrink-0">
-                  <img src={ev.poster} alt={ev.title} className="w-full h-full object-cover" />
-                </figure>
+                <figure className="w-24 h-24 flex-shrink-0"><img src={ev.poster} alt={ev.title} className="w-full h-full object-cover" /></figure>
                 <div className="card-body p-4">
                   <h3 className="card-title text-sm font-bold text-base-content line-clamp-1">{ev.title}</h3>
                   <p className="text-xs text-base-content/60">{formatDate(ev.date)} — {ev.location}</p>
@@ -181,75 +142,82 @@ export default function ScannerApp({ initialEventId }: Props) {
   return (
     <div className="max-w-lg mx-auto">
       {/* Event Header */}
-      <div className="flex items-center gap-3 mb-6 bg-base-100 p-4 rounded-xl border border-base-200">
+      <div className="flex items-center gap-3 mb-4 bg-base-100 p-3 rounded-xl border border-base-200">
         <button onClick={() => { setSelectedEvent(null); setScanHistory([]); setTicketInfo(null); }} className="btn btn-ghost btn-sm btn-circle">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
         </button>
-        <img src={selectedEvent.poster} alt="" className="w-12 h-12 rounded-lg object-cover" />
+        <img src={selectedEvent.poster} alt="" className="w-10 h-10 rounded-lg object-cover" />
         <div className="min-w-0 flex-1">
-          <p className="font-bold text-base-content truncate">{selectedEvent.title}</p>
-          <p className="text-xs text-base-content/60">{formatDate(selectedEvent.date)} — {selectedEvent.location}</p>
+          <p className="font-bold text-sm text-base-content truncate">{selectedEvent.title}</p>
+          <p className="text-xs text-base-content/60">{formatDate(selectedEvent.date)}</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="stats stats-vertical sm:stats-horizontal shadow w-full mb-6 bg-base-100">
-        <div className="stat py-3 px-4">
-          <div className="stat-title text-xs">Session Scans</div>
-          <div className="stat-value text-2xl text-primary">{totalScans}</div>
-        </div>
-        <div className="stat py-3 px-4">
-          <div className="stat-title text-xs">Terjual</div>
-          <div className="stat-value text-2xl">{selectedEvent.scannedTickets}</div>
-        </div>
-        <div className="stat py-3 px-4">
-          <div className="stat-title text-xs">Kuota</div>
-          <div className="stat-value text-2xl">{selectedEvent.totalTickets}</div>
-        </div>
+      <div className="stats stats-horizontal shadow w-full mb-4 bg-base-100 rounded-xl">
+        <div className="stat py-2 px-4"><div className="stat-title text-xs">Scans</div><div className="stat-value text-lg text-primary">{totalScans}</div></div>
+        <div className="stat py-2 px-4"><div className="stat-title text-xs">Terjual</div><div className="stat-value text-lg">{selectedEvent.scannedTickets}</div></div>
+        <div className="stat py-2 px-4"><div className="stat-title text-xs">Kuota</div><div className="stat-value text-lg">{selectedEvent.totalTickets}</div></div>
       </div>
 
-      {/* Action Result Overlay */}
-      {actionResult && (
-        <div className={`alert mb-4 ${actionResult.status === 'success' ? 'alert-success' : 'alert-error'}`}>
-          <span className="font-semibold">{actionResult.message}</span>
+      {/* Scanner Viewfinder */}
+      <div className="relative bg-gray-900 rounded-2xl overflow-hidden aspect-square mb-4 shadow-lg border-4 border-gray-800">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <p className="text-gray-500 text-sm">Kamera Scanner</p>
         </div>
-      )}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-black/40"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 border-2 border-white/50 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]">
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
+            {isScanning && (
+              <div className="absolute top-0 left-0 w-full h-1 bg-primary shadow-[0_0_8px_2px_rgba(var(--p),0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
+            )}
+          </div>
+        </div>
 
-      {/* Lookup Form */}
-      {!ticketInfo && !actionResult && (
-        <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200 mb-6">
-          <h3 className="text-lg font-semibold text-base-content mb-4">Cek Tiket</h3>
-          <form onSubmit={handleLookup} className="flex gap-2">
-            <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} disabled={isProcessing} />
-            <button type="submit" className="btn btn-primary" disabled={isProcessing || !ticketId.trim()}>
-              {isProcessing ? <span className="loading loading-spinner loading-sm"></span> : 'Cek'}
-            </button>
-          </form>
-          {lookupError && (
-            <div className="alert alert-error mt-3 text-sm">
-              <span>{lookupError}</span>
+        {/* Action Result Overlay on viewfinder */}
+        {actionResult && (
+          <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 ${actionResult.status === 'success' ? 'bg-success/90' : 'bg-error/90'}`}>
+            <div className="bg-white p-4 rounded-full mb-3 shadow-lg">
+              {actionResult.status === 'success' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+              )}
             </div>
-          )}
-        </div>
+            <h3 className="text-xl font-bold text-white">{actionResult.message}</h3>
+          </div>
+        )}
+      </div>
+
+      {/* Input + Lookup */}
+      <form onSubmit={handleLookup} className="flex gap-2 mb-4">
+        <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1 bg-base-100" value={ticketId} onChange={(e) => { setTicketId(e.target.value); setLookupError(null); }} disabled={isProcessing || !!ticketInfo} />
+        <button type="submit" className="btn btn-primary" disabled={isProcessing || !ticketId.trim() || !!ticketInfo}>
+          {isProcessing && !ticketInfo ? <span className="loading loading-spinner loading-sm"></span> : 'Cek'}
+        </button>
+      </form>
+
+      {lookupError && (
+        <div className="alert alert-error mb-4 text-sm"><span>{lookupError}</span></div>
       )}
 
-      {/* Ticket Info + Action Buttons */}
+      {/* Ticket Info + 3 Action Buttons */}
       {ticketInfo && !actionResult && (
-        <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200 mb-6">
-          <div className="text-center mb-6">
-            <div className={`badge badge-lg mb-3 ${
-              ticketInfo.status === 'valid' ? 'badge-success' : ticketInfo.status === 'used' ? 'badge-warning' : 'badge-error'
-            }`}>
-              Status: {ticketInfo.status === 'valid' ? 'Valid' : ticketInfo.status === 'used' ? 'Sudah Digunakan' : 'Tidak Valid'}
+        <div className="bg-base-100 p-4 rounded-xl border border-base-200 mb-4 space-y-4">
+          <div className="text-center">
+            <div className={`badge badge-lg mb-2 ${ticketInfo.status === 'valid' ? 'badge-success' : ticketInfo.status === 'used' ? 'badge-warning' : 'badge-error'}`}>
+              {ticketInfo.status === 'valid' ? 'Valid' : ticketInfo.status === 'used' ? 'Sudah Digunakan' : 'Tidak Valid'}
             </div>
-            <h3 className="text-xl font-bold text-base-content">{ticketInfo.buyerName}</h3>
+            <h3 className="text-lg font-bold text-base-content">{ticketInfo.buyerName}</h3>
             <p className="text-sm text-base-content/60">{ticketInfo.ticketType} — {ticketInfo.event}</p>
-            <p className="text-xs text-base-content/40 font-mono mt-1">{ticketInfo.id}</p>
+            <p className="text-xs text-base-content/40 font-mono">{ticketInfo.id}</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-2">
             <button onClick={() => handleAction('valid')} className="btn btn-success text-white" disabled={isProcessing}>
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
               Tiket Valid
@@ -264,7 +232,7 @@ export default function ScannerApp({ initialEventId }: Props) {
             </button>
           </div>
 
-          <button onClick={() => { setTicketInfo(null); setLookupError(null); }} className="btn btn-ghost w-full mt-3" disabled={isProcessing}>
+          <button onClick={() => { setTicketInfo(null); setLookupError(null); setIsScanning(true); setTicketId(''); }} className="btn btn-ghost btn-sm w-full" disabled={isProcessing}>
             Cek Tiket Lain
           </button>
         </div>
@@ -272,26 +240,33 @@ export default function ScannerApp({ initialEventId }: Props) {
 
       {/* Scan History */}
       {scanHistory.length > 0 && (
-        <div className="bg-base-100 p-6 rounded-xl shadow-sm border border-base-200">
-          <h3 className="text-lg font-semibold text-base-content mb-4">Riwayat Scan</h3>
-          <div className="space-y-2">
+        <div className="bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
+          <h3 className="font-semibold text-base-content mb-3 text-sm">Riwayat ({scanHistory.length})</h3>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
             {scanHistory.map((item, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-base-200 last:border-0">
+              <div key={i} className="flex items-center justify-between py-1.5 border-b border-base-200 last:border-0">
                 <div>
                   <p className="text-sm font-medium text-base-content">{item.name}</p>
                   <p className="text-xs text-base-content/50">{item.id}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`badge badge-sm ${
-                    item.action === 'Tiket Valid' ? 'badge-success' : item.action === 'Sudah Digunakan' ? 'badge-warning' : 'badge-error'
-                  }`}>{item.action}</span>
-                  <p className="text-xs text-base-content/50 mt-1">{item.time}</p>
+                  <span className={`badge badge-sm ${item.action === 'Tiket Valid' ? 'badge-success' : item.action === 'Sudah Digunakan' ? 'badge-warning' : 'badge-error'}`}>{item.action}</span>
+                  <p className="text-xs text-base-content/50 mt-0.5">{item.time}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes scan {
+          0% { top: 0; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
