@@ -19,6 +19,7 @@ export default function CreateEventForm() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [categories, setCategories] = useState<TicketCategory[]>([
@@ -51,7 +52,7 @@ export default function CreateEventForm() {
   // Validation per step
   const isStepValid = (step: number): boolean => {
     switch (step) {
-      case 1: return title.trim().length > 0 && date.length > 0 && location.trim().length > 0;
+      case 1: return title.trim().length > 0 && date.length > 0 && time.length > 0 && location.trim().length > 0;
       case 2: return imageUrl.trim().length > 0;
       case 3: return categories.every(c => c.name.trim().length > 0 && c.quota > 0);
       case 4: return true;
@@ -84,7 +85,7 @@ export default function CreateEventForm() {
     const payload = {
       title,
       description: description || title,
-      date: date ? new Date(date).toISOString() : new Date().toISOString(),
+      date: (date && time) ? new Date(`${date}T${time}`).toISOString() : new Date().toISOString(),
       location,
       imageUrl,
       categories,
@@ -157,39 +158,54 @@ export default function CreateEventForm() {
               <p className="text-sm text-base-content/50 mt-1">Ceritakan tentang event Anda</p>
             </div>
 
-            <div className="form-control w-full">
-              <label className="label"><span className="label-text font-medium">Nama Event *</span></label>
-              <input
-                type="text"
-                placeholder="Contoh: Seminar Nasional Teknologi 2026"
-                className="input input-bordered w-full input-lg"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium">Deskripsi</span>
-                <span className="label-text-alt text-base-content/40">{description.length} karakter</span>
-              </label>
-              <textarea
-                className="textarea textarea-bordered h-28 resize-none"
-                placeholder="Jelaskan detail event, pembicara, agenda, dll..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-
+            {/* Nama Event + Deskripsi sebaris */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control w-full">
-                <label className="label"><span className="label-text font-medium">Tanggal & Waktu *</span></label>
+                <label className="label"><span className="label-text font-medium">Nama Event *</span></label>
                 <input
-                  type="datetime-local"
+                  type="text"
+                  placeholder="Contoh: Seminar Nasional Teknologi 2026"
+                  className="input input-bordered w-full"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Deskripsi</span>
+                  <span className="label-text-alt text-base-content/40">{description.length}/200</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Deskripsi singkat event Anda..."
+                  className="input input-bordered w-full"
+                  maxLength={200}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Tanggal + Jam + Lokasi sebaris */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text font-medium">Tanggal *</span></label>
+                <input
+                  type="date"
                   className="input input-bordered w-full"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text font-medium">Jam *</span></label>
+                <input
+                  type="time"
+                  className="input input-bordered w-full"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
                   required
                 />
               </div>
@@ -392,7 +408,7 @@ export default function CreateEventForm() {
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-primary mt-0.5 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
                     <div>
                       <p className="text-xs text-base-content/50">Tanggal & Waktu</p>
-                      <p className="text-sm font-medium text-base-content">{date ? formatDate(date) : '-'}</p>
+                      <p className="text-sm font-medium text-base-content">{date ? formatDate(date) + (time ? `, ${time}` : '') : '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
