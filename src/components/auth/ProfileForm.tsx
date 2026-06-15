@@ -6,6 +6,9 @@ export default function ProfileForm() {
     email: '',
     phone: '',
     role: 'buyer',
+    bankName: '',
+    bankAccount: '',
+    bankAccountName: '',
   });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,12 +26,15 @@ export default function ProfileForm() {
           email: user.email ?? '',
           phone: user.phone ?? '',
           role: user.role ?? 'buyer',
+          bankName: user.bankName ?? '',
+          bankAccount: user.bankAccount ?? '',
+          bankAccountName: user.bankAccountName ?? '',
         });
       }
     } catch {}
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError(null);
@@ -106,6 +112,43 @@ export default function ProfileForm() {
           </div>
         </div>
       </div>
+
+      {/* Bank Account — only for organizer */}
+      {formData.role === 'organizer' && (
+        <div className="bg-base-100 rounded-xl border border-base-200 p-6">
+          <h2 className="text-lg font-bold text-base-content mb-1">Rekening Bank</h2>
+          <p className="text-sm text-base-content/60 mb-4">Digunakan untuk penarikan dana dari hasil penjualan tiket.</p>
+          
+          <div className="space-y-4">
+            <div className="form-control w-full">
+              <label className="label"><span className="label-text font-medium">Nama Bank</span></label>
+              <select name="bankName" value={formData.bankName} onChange={handleChange} className="select select-bordered w-full">
+                <option value="">Pilih Bank</option>
+                <option value="BCA">BCA</option>
+                <option value="BNI">BNI</option>
+                <option value="BRI">BRI</option>
+                <option value="Mandiri">Mandiri</option>
+                <option value="BSI">BSI</option>
+                <option value="CIMB Niaga">CIMB Niaga</option>
+                <option value="Danamon">Danamon</option>
+                <option value="Permata">Permata</option>
+                <option value="Jago">Jago</option>
+                <option value="Seabank">Seabank</option>
+              </select>
+            </div>
+
+            <div className="form-control w-full">
+              <label className="label"><span className="label-text font-medium">Nomor Rekening</span></label>
+              <input type="text" name="bankAccount" value={formData.bankAccount} onChange={handleChange} placeholder="Contoh: 1234567890" className="input input-bordered w-full" />
+            </div>
+
+            <div className="form-control w-full">
+              <label className="label"><span className="label-text font-medium">Nama Pemilik Rekening</span></label>
+              <input type="text" name="bankAccountName" value={formData.bankAccountName} onChange={handleChange} placeholder="Sesuai buku tabungan" className="input input-bordered w-full" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Change Password */}
       <div className="bg-base-100 rounded-xl border border-base-200 p-6">
