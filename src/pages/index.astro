@@ -1,7 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import EventCard from '../components/dashboard/EventCard';
-import SearchBar from '../components/SearchBar';
 import { db, initDb } from '../lib/db';
 import { events } from '../lib/schema';
 import { seed } from '../lib/seed';
@@ -27,12 +26,9 @@ const mockEvents = rows.map((e) => ({
   {/* Events Section */}
   <section class="pt-8 pb-12 bg-base-100">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
-        <div>
-          <h1 class="text-3xl font-bold text-base-content mb-1">Event Terpopuler</h1>
-          <p class="text-base-content/60">Temukan dan beli tiket event favoritmu</p>
-        </div>
-        <SearchBar client:load />
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-base-content mb-1">Event Terpopuler</h1>
+        <p class="text-base-content/60">Temukan dan beli tiket event favoritmu</p>
       </div>
 
       {mockEvents.length > 0 ? (
