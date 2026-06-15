@@ -158,7 +158,7 @@ export default function CreateEventForm() {
               <p className="text-sm text-base-content/50 mt-1">Ceritakan tentang event Anda</p>
             </div>
 
-            {/* Nama Event + Deskripsi sebaris */}
+            {/* Nama Event + Lokasi sebaris */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-medium">Nama Event *</span></label>
@@ -172,23 +172,20 @@ export default function CreateEventForm() {
                 />
               </div>
               <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Deskripsi</span>
-                  <span className="label-text-alt text-base-content/40">{description.length}/200</span>
-                </label>
+                <label className="label"><span className="label-text font-medium">Lokasi *</span></label>
                 <input
                   type="text"
-                  placeholder="Deskripsi singkat event Anda..."
+                  placeholder="Contoh: Auditorium Kampus A"
                   className="input input-bordered w-full"
-                  maxLength={200}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  required
                 />
               </div>
             </div>
 
-            {/* Tanggal + Jam + Lokasi sebaris */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {/* Tanggal + Jam sebaris */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-medium">Tanggal *</span></label>
                 <input
@@ -209,17 +206,21 @@ export default function CreateEventForm() {
                   required
                 />
               </div>
-              <div className="form-control w-full">
-                <label className="label"><span className="label-text font-medium">Lokasi *</span></label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Auditorium Kampus A"
-                  className="input input-bordered w-full"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  required
-                />
-              </div>
+            </div>
+
+            {/* Deskripsi full width, textarea panjang */}
+            <div className="form-control w-full">
+              <label className="label">
+                <span className="label-text font-medium">Deskripsi</span>
+                <span className="label-text-alt text-base-content/40">{description.length}/500</span>
+              </label>
+              <textarea
+                className="textarea textarea-bordered w-full h-36 resize-none"
+                placeholder="Jelaskan detail event, pembicara, agenda, syarat pendaftaran, dan informasi penting lainnya..."
+                maxLength={500}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
           </div>
         )}
