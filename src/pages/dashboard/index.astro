@@ -1,8 +1,9 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { db } from '../../lib/db';
+import { db, initDb } from '../../lib/db';
 import { events, transactions } from '../../lib/schema';
 
+await initDb();
 const eventRows = await db.select().from(events);
 const trxRows = await db.select().from(transactions);
 

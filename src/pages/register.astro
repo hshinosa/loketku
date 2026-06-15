@@ -1,0 +1,9 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+import RegisterForm from '../components/auth/RegisterForm';
+import '../styles/global.css';
+---
+
+<AuthLayout title="Daftar">
+  <RegisterForm client:load />
+</AuthLayout>

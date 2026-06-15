@@ -1,9 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { db } from '../../lib/db';
+import { db, initDb } from '../../lib/db';
 import { tickets, events } from '../../lib/schema';
 import { eq } from 'drizzle-orm';
 
+await initDb();
 const rows = await db.select().from(tickets).leftJoin(events, eq(tickets.eventId, events.id));
 
 const formatDate = (iso: string) =>

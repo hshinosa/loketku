@@ -83,7 +83,7 @@ export default function LoginForm() {
         </form>
         
         <div className="text-center mt-6 text-sm text-base-content/60">
-          Belum punya akun? <span className="font-medium">Hubungi admin untuk registrasi.</span>
+          Belum punya akun? <a href="/register" className="link link-primary font-medium">Daftar sekarang</a>
         </div>
       </div>
     </div>

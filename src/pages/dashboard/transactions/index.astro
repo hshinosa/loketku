@@ -1,8 +1,9 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { db } from '../../../lib/db';
+import { db, initDb } from '../../../lib/db';
 import { transactions } from '../../../lib/schema';
 
+await initDb();
 const rows = await db.select().from(transactions);
 
 const formatCurrency = (amount: number) =>

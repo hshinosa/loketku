@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../lib/db';
+import { db, initDb } from '../../lib/db';
 import { events } from '../../lib/schema';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    await initDb();
     const body = await request.json();
     const id = `evt_${Date.now().toString(36)}`;
     const firstCategory = Array.isArray(body.categories) && body.categories.length > 0 ? body.categories[0] : null;

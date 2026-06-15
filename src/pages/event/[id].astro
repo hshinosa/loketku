@@ -1,12 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import TicketSelector from '../../components/TicketSelector';
-import { db } from '../../lib/db';
+import { db, initDb } from '../../lib/db';
 import { events, tickets as ticketsTable } from '../../lib/schema';
 import { eq } from 'drizzle-orm';
 
 const { id } = Astro.params;
 
+await initDb();
 const rows = await db.select().from(events).where(eq(events.id, id ?? ''));
 const event = rows[0];
 

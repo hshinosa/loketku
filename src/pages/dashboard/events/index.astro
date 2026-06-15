@@ -1,8 +1,9 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { db } from '../../../lib/db';
+import { db, initDb } from '../../../lib/db';
 import { events } from '../../../lib/schema';
 
+await initDb();
 const rows = await db.select().from(events);
 
 const formatRupiah = (n: number) =>
@@ -135,8 +136,8 @@ const eventsList = rows.map((e) => {
             </div>
 
             <div class="card-actions justify-end mt-auto pt-2">
-              <button class="btn btn-sm btn-outline text-primary hover:bg-primary hover:text-white hover:border-primary flex-1">Edit</button>
-              <button class="btn btn-sm bg-primary text-white hover:bg-primary/90 border-none flex-1">Kelola</button>
+              <a href={`/dashboard/events/edit/${event.id}`} class="btn btn-sm btn-outline text-primary hover:bg-primary hover:text-white hover:border-primary flex-1">Edit</a>
+              <button class="btn btn-sm btn-outline text-error hover:bg-error hover:text-white hover:border-error flex-1 btn-delete" data-id={event.id} data-title={event.title}>Hapus</button>
             </div>
           </div>
         </div>
@@ -156,4 +157,50 @@ const eventsList = rows.map((e) => {
     </div>
     )}
   </div>
+
+  <!-- Delete Confirmation Modal -->
+  <dialog id="delete-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Hapus Event?</h3>
+      <p class="py-4">Event <strong id="delete-event-title"></strong> akan dihapus permanen beserta semua transaksi terkait. Aksi ini tidak bisa dibatalkan.</p>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-ghost">Batal</button>
+        </form>
+        <button id="confirm-delete" class="btn btn-error text-white">Ya, Hapus</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const modal = document.getElementById('delete-modal') as HTMLDialogElement;
+      const titleEl = document.getElementById('delete-event-title');
+      const confirmBtn = document.getElementById('confirm-delete');
+      let deleteTargetId = '';
+
+      document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          deleteTargetId = (btn as HTMLElement).dataset.id ?? '';
+          if (titleEl) titleEl.textContent = (btn as HTMLElement).dataset.title ?? '';
+          modal?.showModal();
+        });
+      });
+
+      confirmBtn?.addEventListener('click', async () => {
+        if (!deleteTargetId) return;
+        confirmBtn.classList.add('loading');
+        try {
+          const res = await fetch(`/api/events/${deleteTargetId}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (res.ok && data.ok) {
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error('Delete failed:', err);
+        }
+      });
+    });
+  </script>
 </Layout>

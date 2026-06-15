@@ -1,0 +1,46 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import EditEventForm from '../../../../components/dashboard/EditEventForm';
+import { db, initDb } from '../../../../lib/db';
+import { events } from '../../../../lib/schema';
+import { eq } from 'drizzle-orm';
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/dashboard/events');
+
+await initDb();
+const rows = await db.select().from(events).where(eq(events.id, id as string));
+const event = rows[0];
+
+if (!event) return Astro.redirect('/dashboard/events');
+
+const eventData = {
+  id: event.id,
+  title: event.title,
+  description: event.description,
+  date: event.date,
+  location: event.location,
+  price: event.price,
+  quota: event.quota,
+  poster: event.poster,
+  organizer: event.organizer,
+};
+---
+
+<Layout title={`Edit: ${event.title} | Loketku`}>
+  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
+    <div class="mb-8">
+      <div class="text-sm breadcrumbs text-base-content/50 mb-4">
+        <ul>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="/dashboard/events">Event</a></li>
+          <li class="text-base-content font-medium">Edit</li>
+        </ul>
+      </div>
+      <h1 class="text-3xl font-bold text-base-content">Edit Event</h1>
+      <p class="text-base-content/60 mt-2">Perbarui detail event Anda.</p>
+    </div>
+
+    <EditEventForm client:load event={eventData} />
+  </div>
+</Layout>
