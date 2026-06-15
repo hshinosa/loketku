@@ -20,12 +20,12 @@ export default function ScannerApp({ initialEventId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const [ticketId, setTicketId] = useState('');
-  const [ticketInfo, setTicketInfo] = useState<{
-    id: string; buyerName: string; ticketType: string; event: string; status: string;
-  } | null>(null);
-  const [lookupError, setLookupError] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [actionResult, setActionResult] = useState<{
+    status: 'success' | 'error';
+    message: string;
+    details?: { buyerName: string; ticketType: string; event: string };
+  } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
   const [scanHistory, setScanHistory] = useState<{ id: string; name: string; action: string; time: string }[]>([]);
 
@@ -48,63 +48,67 @@ export default function ScannerApp({ initialEventId }: Props) {
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const handleLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticketId.trim()) return;
-    setLookupError(null);
-    setTicketInfo(null);
-    setActionResult(null);
-    setIsProcessing(true);
-
-    try {
-      const res = await fetch('/api/tickets/lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketId: ticketId.trim() }),
-      });
-      const data = await res.json();
-      if (data.ok && data.ticket) {
-        setTicketInfo({
-          id: data.ticket.id, buyerName: data.ticket.buyerName,
-          ticketType: data.ticket.ticketType, event: data.ticket.eventTitle, status: data.ticket.status,
-        });
-        setIsScanning(false);
-      } else {
-        setLookupError(data.message ?? 'Tiket tidak ditemukan');
-      }
-    } catch { setLookupError('Gagal terhubung ke server'); }
-    finally { setIsProcessing(false); }
-  };
-
   const handleAction = async (action: 'valid' | 'invalid' | 'used') => {
-    if (!ticketInfo) return;
+    if (!ticketId.trim()) return;
     setIsProcessing(true);
-    const labels: Record<string, string> = { valid: 'Tiket Valid', invalid: 'Tidak Valid', used: 'Sudah Digunakan' };
+    setIsScanning(false);
+
+    const labels: Record<string, string> = { valid: 'Tiket Valid ✓', invalid: 'Tiket Tidak Valid', used: 'Sudah Digunakan' };
     const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
     try {
       const res = await fetch('/api/tickets/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketId: ticketInfo.id, action }),
+        body: JSON.stringify({ ticketId: ticketId.trim(), action }),
       });
       const data = await res.json();
-      setActionResult({ status: data.ok ? 'success' : 'error', message: data.ok ? `${labels[action]} — ${ticketInfo.buyerName}` : (data.message ?? 'Gagal') });
+      const ticket = data.ticket;
+
       if (data.ok) {
-        setScanHistory(prev => [{ id: ticketInfo.id, name: ticketInfo.buyerName, action: labels[action], time }, ...prev].slice(0, 50));
+        setActionResult({
+          status: 'success',
+          message: labels[action],
+          details: ticket ? { buyerName: ticket.buyerName, ticketType: ticket.ticketType, event: ticket.eventTitle } : undefined,
+        });
+        setScanHistory(prev => [{
+          id: ticketId.trim(),
+          name: ticket?.buyerName ?? ticketId.trim(),
+          action: labels[action],
+          time,
+        }, ...prev].slice(0, 50));
+      } else {
+        setActionResult({
+          status: 'error',
+          message: data.message ?? 'Tiket tidak ditemukan',
+          details: ticket ? { buyerName: ticket.buyerName, ticketType: ticket.ticketType, event: ticket.eventTitle } : undefined,
+        });
+        setScanHistory(prev => [{
+          id: ticketId.trim(),
+          name: ticket?.buyerName ?? ticketId.trim(),
+          action: data.message ?? 'Error',
+          time,
+        }, ...prev].slice(0, 50));
       }
-    } catch { setActionResult({ status: 'error', message: 'Gagal terhubung ke server' }); }
+    } catch {
+      setActionResult({ status: 'error', message: 'Gagal terhubung ke server' });
+    }
 
     setTimeout(() => {
       setActionResult(null);
-      setTicketInfo(null);
       setTicketId('');
-      setIsScanning(true);
       setIsProcessing(false);
-    }, 2500);
+      setIsScanning(true);
+    }, 3000);
   };
 
-  const totalScans = scanHistory.length;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketId.trim()) return;
+    handleAction('valid');
+  };
+
+  const totalScans = scanHistory.filter(h => h.action.includes('Valid ✓')).length;
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><span className="loading loading-spinner loading-lg text-primary"></span></div>;
@@ -143,7 +147,7 @@ export default function ScannerApp({ initialEventId }: Props) {
     <div className="max-w-lg mx-auto">
       {/* Event Header */}
       <div className="flex items-center gap-3 mb-4 bg-base-100 p-3 rounded-xl border border-base-200">
-        <button onClick={() => { setSelectedEvent(null); setScanHistory([]); setTicketInfo(null); }} className="btn btn-ghost btn-sm btn-circle">
+        <button onClick={() => { setSelectedEvent(null); setScanHistory([]); }} className="btn btn-ghost btn-sm btn-circle">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
         </button>
         <img src={selectedEvent.poster} alt="" className="w-10 h-10 rounded-lg object-cover" />
@@ -178,7 +182,7 @@ export default function ScannerApp({ initialEventId }: Props) {
           </div>
         </div>
 
-        {/* Action Result Overlay on viewfinder */}
+        {/* Result Overlay */}
         {actionResult && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 ${actionResult.status === 'success' ? 'bg-success/90' : 'bg-error/90'}`}>
             <div className="bg-white p-4 rounded-full mb-3 shadow-lg">
@@ -188,55 +192,57 @@ export default function ScannerApp({ initialEventId }: Props) {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
               )}
             </div>
-            <h3 className="text-xl font-bold text-white">{actionResult.message}</h3>
+            <h3 className="text-xl font-bold text-white mb-2">{actionResult.message}</h3>
+            {actionResult.details && (
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 w-full text-left border border-white/30">
+                <p className="text-white font-semibold">{actionResult.details.buyerName}</p>
+                <p className="text-white/80 text-sm">{actionResult.details.ticketType} — {actionResult.details.event}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Input + Lookup */}
-      <form onSubmit={handleLookup} className="flex gap-2 mb-4">
-        <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1 bg-base-100" value={ticketId} onChange={(e) => { setTicketId(e.target.value); setLookupError(null); }} disabled={isProcessing || !!ticketInfo} />
-        <button type="submit" className="btn btn-primary" disabled={isProcessing || !ticketId.trim() || !!ticketInfo}>
-          {isProcessing && !ticketInfo ? <span className="loading loading-spinner loading-sm"></span> : 'Cek'}
-        </button>
+      {/* Input Tiket */}
+      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Masukkan ID Tiket atau scan QR..."
+          className="input input-bordered flex-1 bg-base-100"
+          value={ticketId}
+          onChange={(e) => setTicketId(e.target.value)}
+          disabled={isProcessing}
+          autoFocus
+        />
       </form>
 
-      {lookupError && (
-        <div className="alert alert-error mb-4 text-sm"><span>{lookupError}</span></div>
-      )}
-
-      {/* Ticket Info + 3 Action Buttons */}
-      {ticketInfo && !actionResult && (
-        <div className="bg-base-100 p-4 rounded-xl border border-base-200 mb-4 space-y-4">
-          <div className="text-center">
-            <div className={`badge badge-lg mb-2 ${ticketInfo.status === 'valid' ? 'badge-success' : ticketInfo.status === 'used' ? 'badge-warning' : 'badge-error'}`}>
-              {ticketInfo.status === 'valid' ? 'Valid' : ticketInfo.status === 'used' ? 'Sudah Digunakan' : 'Tidak Valid'}
-            </div>
-            <h3 className="text-lg font-bold text-base-content">{ticketInfo.buyerName}</h3>
-            <p className="text-sm text-base-content/60">{ticketInfo.ticketType} — {ticketInfo.event}</p>
-            <p className="text-xs text-base-content/40 font-mono">{ticketInfo.id}</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <button onClick={() => handleAction('valid')} className="btn btn-success text-white" disabled={isProcessing}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              Tiket Valid
-            </button>
-            <button onClick={() => handleAction('used')} className="btn btn-warning text-white" disabled={isProcessing}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Sudah Digunakan
-            </button>
-            <button onClick={() => handleAction('invalid')} className="btn btn-error text-white" disabled={isProcessing}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              Tiket Tidak Valid
-            </button>
-          </div>
-
-          <button onClick={() => { setTicketInfo(null); setLookupError(null); setIsScanning(true); setTicketId(''); }} className="btn btn-ghost btn-sm w-full" disabled={isProcessing}>
-            Cek Tiket Lain
-          </button>
-        </div>
-      )}
+      {/* 3 Action Buttons — selalu tampil */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <button
+          onClick={() => handleAction('valid')}
+          className="btn btn-success text-white btn-sm h-auto py-3 flex-col gap-1"
+          disabled={isProcessing || !ticketId.trim()}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          <span className="text-xs">Valid</span>
+        </button>
+        <button
+          onClick={() => handleAction('used')}
+          className="btn btn-warning text-white btn-sm h-auto py-3 flex-col gap-1"
+          disabled={isProcessing || !ticketId.trim()}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span className="text-xs">Digunakan</span>
+        </button>
+        <button
+          onClick={() => handleAction('invalid')}
+          className="btn btn-error text-white btn-sm h-auto py-3 flex-col gap-1"
+          disabled={isProcessing || !ticketId.trim()}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <span className="text-xs">Tidak Valid</span>
+        </button>
+      </div>
 
       {/* Scan History */}
       {scanHistory.length > 0 && (
@@ -250,7 +256,9 @@ export default function ScannerApp({ initialEventId }: Props) {
                   <p className="text-xs text-base-content/50">{item.id}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`badge badge-sm ${item.action === 'Tiket Valid' ? 'badge-success' : item.action === 'Sudah Digunakan' ? 'badge-warning' : 'badge-error'}`}>{item.action}</span>
+                  <span className={`badge badge-sm ${
+                    item.action.includes('Valid ✓') ? 'badge-success' : item.action.includes('Digunakan') ? 'badge-warning' : 'badge-error'
+                  }`}>{item.action}</span>
                   <p className="text-xs text-base-content/50 mt-0.5">{item.time}</p>
                 </div>
               </div>
