@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface CheckoutFormProps {
   ticketId: string;
@@ -16,6 +16,20 @@ export default function CheckoutForm({ ticketId, eventId, quantity, totalAmount 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('loketku_user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setFormData(prev => ({
+          ...prev,
+          name: user.name ?? '',
+          email: user.email ?? '',
+        }));
+      }
+    } catch {}
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

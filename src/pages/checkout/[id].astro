@@ -1,11 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import CheckoutForm from '../../components/dashboard/CheckoutForm';
-import { db } from '../../lib/db';
+import { db, initDb } from '../../lib/db';
 import { events, tickets } from '../../lib/schema';
 import { eq } from 'drizzle-orm';
 
 const { id } = Astro.params;
+
+await initDb();
 
 // Read quantity from URL search params (e.g. ?quantity=2)
 const url = new URL(Astro.request.url);
