@@ -1,0 +1,172 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { db } from '../../lib/db';
+import { tickets } from '../../lib/schema';
+import { eq } from 'drizzle-orm';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+const rows = await db.select().from(tickets).where(eq(tickets.id, id ?? ''));
+const ticket = rows[0];
+
+if (!ticket) {
+  return Astro.redirect('/');
+}
+
+const formattedDate = new Date(ticket.date).toLocaleDateString('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+const formattedTime = new Date(ticket.date).toLocaleTimeString('id-ID', {
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status === 'used' ? 'SUDAH DIGUNAKAN' : 'TIKET TIDAK VALID';
+---
+
+<Layout title={`E-Ticket - ${ticket.id}`}>
+  <div class="min-h-screen bg-base-200 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md mx-auto">
+      
+      <!-- Navigation -->
+      <div class="mb-6 flex items-center justify-between">
+        <a href="/tickets" class="btn btn-ghost btn-sm gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          Kembali ke Tiket Saya
+        </a>
+        <button class="btn btn-ghost btn-sm btn-circle" title="Unduh PDF">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Ticket Card -->
+      <div class="card bg-base-100 shadow-2xl overflow-hidden relative">
+        
+        <!-- Anti-fraud visual indicator (moving line) -->
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70 animate-[scan_2s_ease-in-out_infinite]"></div>
+        
+        <!-- Ticket Header -->
+        <div class="bg-primary text-primary-content p-6 text-center relative overflow-hidden">
+          <!-- Decorative circles -->
+          <div class="absolute -top-10 -left-10 w-32 h-32 bg-white opacity-10 rounded-full"></div>
+          <div class="absolute -bottom-10 -right-10 w-24 h-24 bg-white opacity-10 rounded-full"></div>
+          
+          <div class="badge badge-secondary mb-3 font-bold">{statusBadge}</div>
+          <h2 class="text-2xl font-bold leading-tight mb-1">{ticket.eventTitle}</h2>
+          <p class="text-primary-content/80 text-sm">{ticket.ticketType}</p>
+        </div>
+
+        <!-- Ticket Body -->
+        <div class="p-6">
+          
+          <!-- QR Code Section -->
+          <div class="flex flex-col items-center justify-center py-4 mb-6 border-b border-dashed border-base-300">
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-base-200 relative">
+              <!-- Placeholder for actual QR Code -->
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticket.qrCode}`} alt={`QR Code for ${ticket.id}`} class="w-48 h-48 object-contain" />
+              
+              <!-- Live timestamp for anti-fraud -->
+              <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-base-300 text-base-content text-xs px-3 py-1 rounded-full font-mono whitespace-nowrap shadow-sm" id="live-time">
+                00:00:00
+              </div>
+            </div>
+            <p class="mt-5 font-mono text-lg font-bold tracking-widest text-base-content">{ticket.id}</p>
+            <p class="text-xs text-base-content/50 mt-1">Tunjukkan QR code ini saat masuk</p>
+          </div>
+
+          <!-- Event Details -->
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-base-content">{formattedDate}</p>
+                <p class="text-xs text-base-content/70">{formattedTime} WIB</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-base-content">{ticket.eventTitle}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider my-4"></div>
+
+          <!-- Buyer Details -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs text-base-content/60 mb-1">Nama Pemesan</p>
+              <p class="text-sm font-semibold text-base-content">{ticket.buyerName}</p>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/60 mb-1">Tipe Tiket</p>
+              <p class="text-sm font-semibold text-base-content">{ticket.ticketType}</p>
+            </div>
+          </div>
+
+        </div>
+        
+        <!-- Ticket Footer -->
+        <div class="bg-base-200 p-4 text-center text-xs text-base-content/60 border-t border-base-300">
+          Tiket ini tidak dapat dipindahtangankan. Harap bawa kartu identitas asli yang sesuai dengan nama pemesan.
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  @keyframes scan {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(400px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  // Update live time for anti-fraud
+  function updateTime() {
+    const timeElement = document.getElementById('live-time');
+    if (timeElement) {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('id-ID', { 
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      timeElement.textContent = timeString;
+    }
+  }
+
+  // Initial call and set interval
+  updateTime();
+  setInterval(updateTime, 1000);
+</script>

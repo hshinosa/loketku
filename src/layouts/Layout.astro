@@ -1,0 +1,192 @@
+---
+import '../styles/global.css';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="id" data-theme="loketku">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Loketku - Platform Ticketing Event Kampus & Komunitas" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+	</head>
+	<body class="min-h-screen bg-base-200 text-base-content font-sans antialiased flex flex-col">
+		<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:btn focus:btn-primary focus:btn-sm">
+			Skip to content
+		</a>
+		<header class="bg-base-100 border-b border-base-200 sticky top-0 z-50">
+			<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+				<div class="flex items-center justify-between h-16">
+					<div class="flex-shrink-0">
+						<a href="/" class="flex items-center">
+							<img src="/logo-loketku.png" alt="Loketku Logo" class="h-8 w-auto" />
+						</a>
+					</div>
+					
+					{/* Desktop Search Bar */}
+					<div class="hidden md:flex flex-1 max-w-md mx-8">
+						<div class="join w-full">
+							<div class="relative w-full">
+								<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+										<path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+									</svg>
+								</div>
+								<input type="text" placeholder="Cari event kampus..." class="input input-bordered join-item w-full pl-10 bg-gray-50 focus:bg-white transition-colors" />
+							</div>
+							<button class="btn btn-primary join-item">Cari</button>
+						</div>
+					</div>
+					
+					{/* Auth Buttons / User Menu */}
+					<div class="flex items-center space-x-4" id="auth-container">
+						{/* Default Unauthenticated State (will be updated by JS) */}
+						<div id="unauth-buttons" class="flex items-center space-x-4">
+							<a href="/login" class="btn btn-ghost btn-sm text-gray-700 font-medium">Masuk</a>
+							<a href="/login" class="btn btn-primary btn-sm font-medium text-white">Buat Event</a>
+						</div>
+
+						{/* Authenticated State (Hidden by default) */}
+						<div id="auth-user-menu" class="hidden items-center space-x-4">
+							<div class="dropdown dropdown-end">
+								<div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+									<div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
+										<span id="user-initial" class="text-lg font-bold">U</span>
+									</div>
+								</div>
+								<ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+									<li class="px-4 py-2 border-b border-base-200 mb-2">
+										<span id="user-name-display" class="font-semibold block">User Name</span>
+										<span id="user-role-display" class="text-xs text-gray-500 capitalize">Role</span>
+									</li>
+									<li id="nav-dashboard" class="hidden"><a href="/dashboard">Dashboard Organizer</a></li>
+									<li id="nav-scan" class="hidden"><a href="/dashboard/scan">Scanner Tiket</a></li>
+									<li id="nav-tickets" class="hidden"><a href="/tickets">Tiket Saya</a></li>
+									<li><button id="switch-role-btn" class="text-primary">Ganti Role (Demo)</button></li>
+									<li><button id="logout-btn" class="text-error">Keluar</button></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<main id="main-content" class="flex-grow">
+			<slot />
+		</main>
+
+		<footer class="bg-white border-t border-gray-100 py-12 mt-auto">
+			<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+				<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+					<div>
+						<img src="/logo-loketku.png" alt="Loketku Logo" class="h-8 w-auto mb-2" />
+						<p class="text-sm text-gray-500 mt-2">Platform ticketing terpercaya untuk event kampus dan komunitas.</p>
+					</div>
+					<div class="text-sm text-gray-500">
+						&copy; {new Date().getFullYear()} Loketku. All rights reserved.
+					</div>
+				</div>
+			</div>
+		</footer>
+
+		<script>
+			// Client-side auth state management
+			document.addEventListener('DOMContentLoaded', () => {
+				const unauthButtons = document.getElementById('unauth-buttons');
+				const authUserMenu = document.getElementById('auth-user-menu');
+				const navDashboard = document.getElementById('nav-dashboard');
+				const navScan = document.getElementById('nav-scan');
+				const navTickets = document.getElementById('nav-tickets');
+				const userNameDisplay = document.getElementById('user-name-display');
+				const userRoleDisplay = document.getElementById('user-role-display');
+				const userInitial = document.getElementById('user-initial');
+				const logoutBtn = document.getElementById('logout-btn');
+				const switchRoleBtn = document.getElementById('switch-role-btn');
+
+				// Check local storage for user
+				let userStr = localStorage.getItem('loketku_user');
+				
+				function updateUI(user) {
+					// Update UI for authenticated user
+					if (unauthButtons) unauthButtons.classList.add('hidden');
+					if (authUserMenu) {
+						authUserMenu.classList.remove('hidden');
+						authUserMenu.classList.add('flex');
+					}
+					
+					// Update user details
+					if (userNameDisplay) userNameDisplay.textContent = user.name || 'User';
+					if (userRoleDisplay) userRoleDisplay.textContent = user.role === 'buyer' ? 'Pengguna' : 'Organizer';
+					if (userInitial) userInitial.textContent = (user.name || 'U').charAt(0).toUpperCase();
+
+					// Reset navigation visibility
+					if (navDashboard) navDashboard.classList.add('hidden');
+					if (navScan) navScan.classList.add('hidden');
+					if (navTickets) navTickets.classList.add('hidden');
+
+					// Update navigation based on role
+					if (user.role === 'organizer') {
+						if (navDashboard) navDashboard.classList.remove('hidden');
+						if (navScan) navScan.classList.remove('hidden');
+					} else {
+						// Buyer role
+						if (navTickets) navTickets.classList.remove('hidden');
+					}
+				}
+
+				if (userStr) {
+					try {
+						const user = JSON.parse(userStr);
+						updateUI(user);
+					} catch (e) {
+						console.error('Error parsing user data', e);
+						// Fallback to unauthenticated state
+					}
+				}
+
+				// Handle switch role (Demo)
+				if (switchRoleBtn) {
+					switchRoleBtn.addEventListener('click', () => {
+						const currentUserStr = localStorage.getItem('loketku_user');
+						if (currentUserStr) {
+							try {
+								const currentUser = JSON.parse(currentUserStr);
+								const newRole = currentUser.role === 'buyer' ? 'organizer' : 'buyer';
+								const newUser = {
+									name: newRole === 'buyer' ? 'Demo Pengguna' : 'Demo Organizer',
+									email: 'demo@loketku.com',
+									role: newRole
+								};
+								localStorage.setItem('loketku_user', JSON.stringify(newUser));
+								updateUI(newUser);
+							} catch (e) {
+								console.error('Error switching role', e);
+							}
+						}
+					});
+				}
+
+				// Handle logout
+				if (logoutBtn) {
+					logoutBtn.addEventListener('click', () => {
+						localStorage.removeItem('loketku_user');
+						localStorage.removeItem('loketku_session');
+						window.location.href = '/';
+					});
+				}
+			});
+		</script>
+	</body>
+</html>

@@ -1,0 +1,120 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import TicketSelector from '../../components/TicketSelector';
+import { db } from '../../lib/db';
+import { events, tickets as ticketsTable } from '../../lib/schema';
+import { eq } from 'drizzle-orm';
+
+const { id } = Astro.params;
+
+const rows = await db.select().from(events).where(eq(events.id, id ?? ''));
+const event = rows[0];
+
+if (!event) {
+  return Astro.redirect('/');
+}
+
+const ticketList = await db
+  .select()
+  .from(ticketsTable)
+  .where(eq(ticketsTable.eventId, id as string))
+  .all();
+
+const formattedDate = new Date(event.date).toLocaleDateString('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+const formattedTime = new Date(event.date).toLocaleTimeString('id-ID', {
+  hour: '2-digit',
+  minute: '2-digit',
+});
+---
+
+<Layout title={`${event.title} - Loketku`}>
+  <div class="bg-white">
+    {/* Hero Image */}
+    <div class="w-full h-64 md:h-96 relative bg-gray-200">
+      <img 
+        src={event.poster} 
+        alt={event.title} 
+        class="w-full h-full object-cover"
+      />
+      <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+    </div>
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-10 pb-20">
+      <div class="flex flex-col lg:flex-row gap-8">
+        
+        {/* Main Content */}
+        <div class="lg:w-2/3">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
+            
+            <div class="flex flex-col sm:flex-row gap-4 sm:gap-8 mb-8 text-gray-600">
+              <div class="flex items-start gap-3">
+                <div class="bg-primary-50 p-2 rounded-lg text-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-gray-900">{formattedDate}</p>
+                  <p class="text-sm">{formattedTime} WIB</p>
+                </div>
+              </div>
+              
+              <div class="flex items-start gap-3">
+                <div class="bg-primary-50 p-2 rounded-lg text-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-gray-900">{event.location}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="mb-8">
+              <h2 class="text-xl font-bold text-gray-900 mb-4">Deskripsi Event</h2>
+              <p class="text-gray-600">{event.description}</p>
+            </div>
+
+            <div class="divider"></div>
+
+            <div>
+              <h2 class="text-xl font-bold text-gray-900 mb-4">Diselenggarakan Oleh</h2>
+              <div class="flex items-center gap-4">
+                <span class="font-semibold text-gray-900">{event.organizer}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar / Ticket Selection */}
+        <div class="lg:w-1/3">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
+            <TicketSelector
+              client:load
+              tickets={ticketList.map(t => ({
+                id: t.id,
+                name: t.name,
+                price: Number(t.price),
+                quota: t.quota,
+                description: t.description,
+              }))}
+              eventId={event.id}
+            />
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</Layout>

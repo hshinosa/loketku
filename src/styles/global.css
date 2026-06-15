@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "loketku";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Primary - Biru (Trust, Professional) */
+  --color-primary: #1932B9;
+  --color-primary-content: #ffffff;
+  
+  /* Secondary - Merah (Accent, Urgency) */
+  --color-secondary: #BF0000;
+  --color-secondary-content: #ffffff;
+  
+  /* Accent */
+  --color-accent: #152a9c;
+  --color-accent-content: #ffffff;
+  
+  /* Neutral - Abu-abu */
+  --color-neutral: #374151;
+  --color-neutral-content: #ffffff;
+  
+  /* Base colors */
+  --color-base-100: #ffffff;
+  --color-base-200: #F7F7FA;
+  --color-base-300: #E8EBF8;
+  --color-base-content: #172029;
+  
+  /* Semantic Colors */
+  --color-info: #1932B9;
+  --color-info-content: #ffffff;
+  --color-success: #22c55e;
+  --color-success-content: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-content: #ffffff;
+  --color-error: #BF0000;
+  --color-error-content: #ffffff;
+
+  /* Border Radius */
+  --radius-selector: 0.25rem; /* 4px */
+  --radius-field: 0.25rem;    /* 4px */
+  --radius-box: 0.5rem;       /* 8px */
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@theme inline {
+  --font-sans: 'Poppins', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}

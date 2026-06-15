@@ -1,0 +1,433 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { db } from '../../lib/db';
+import { events, transactions } from '../../lib/schema';
+
+const eventRows = await db.select().from(events);
+const trxRows = await db.select().from(transactions);
+
+const formatRupiah = (n: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+const paidTrx = trxRows.filter((t) => t.status === 'paid');
+const totalRevenue = paidTrx.reduce((sum, t) => sum + t.total, 0);
+const ticketsSold = paidTrx.reduce((sum, t) => sum + t.quantity, 0);
+const totalQuota = eventRows.reduce((sum, e) => sum + e.quota, 0);
+const totalSold = eventRows.reduce((sum, e) => sum + e.sold, 0);
+const remainingQuota = Math.max(totalQuota - totalSold, 0);
+const activeEvents = eventRows.filter((e) => e.sold > 0 && e.sold < e.quota).length;
+
+const stats = {
+  totalRevenue: formatRupiah(totalRevenue),
+  revenueGrowth: 12.5,
+  ticketsSold,
+  ticketsGrowth: 8.2,
+  remainingQuota,
+  activeEvents,
+};
+
+const recentTransactions = trxRows.slice(-6).reverse().map((t) => ({
+  id: t.id,
+  name: t.buyerName,
+  email: t.buyerEmail,
+  event: t.eventTitle,
+  date: formatDate(t.timestamp),
+  amount: formatRupiah(t.total),
+  status: t.status === 'paid' ? 'Berhasil' : t.status === 'pending' ? 'Menunggu' : 'Gagal',
+}));
+
+const upcomingEvents = eventRows.slice(0, 3).map((e) => ({
+  id: e.id,
+  title: e.title,
+  date: formatDate(e.date),
+  sold: e.sold,
+  quota: e.quota,
+}));
+---
+
+<Layout title="Dashboard Organizer - Loketku">
+  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Dashboard Organizer</h1>
+        <p class="text-gray-500 mt-1">Ringkasan performa event Anda hari ini</p>
+      </div>
+      <div class="flex gap-3 w-full md:w-auto">
+        <a href="/dashboard/events" class="btn btn-outline btn-primary flex-1 md:flex-none">Kelola Event</a>
+        <a href="/dashboard/events/create" class="btn btn-primary flex-1 md:flex-none shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Buat Event
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <!-- Revenue Stat -->
+      <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-medium text-gray-500">Total Pendapatan</h2>
+            <div class="p-2 bg-primary/10 rounded-lg text-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-2xl font-bold text-gray-900">{stats.totalRevenue}</p>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-xs">
+            <div class="flex items-center">
+              <span class="flex items-center text-success font-medium bg-success/10 px-1.5 py-0.5 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1">
+                  <path fill-rule="evenodd" d="M10 17a.75.75 0 0 1-.75-.75V5.612L5.29 9.77a.75.75 0 0 1-1.08-1.04l5.25-5.5a.75.75 0 0 1 1.08 0l5.25 5.5a.75.75 0 1 1-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0 1 10 17Z" clip-rule="evenodd" />
+                </svg>
+                {stats.revenueGrowth}%
+              </span>
+              <span class="text-gray-500 ml-2">vs bulan lalu</span>
+            </div>
+            <button onclick="withdraw_modal.showModal()" class="btn btn-xs btn-primary btn-outline">Tarik Dana</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tickets Sold Stat -->
+      <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-medium text-gray-500">Tiket Terjual</h2>
+            <div class="p-2 bg-secondary/10 rounded-lg text-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+              </svg>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-2xl font-bold text-gray-900">{stats.ticketsSold}</p>
+          </div>
+          <div class="mt-2 flex items-center text-xs">
+            <span class="flex items-center text-success font-medium bg-success/10 px-1.5 py-0.5 rounded">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1">
+                <path fill-rule="evenodd" d="M10 17a.75.75 0 0 1-.75-.75V5.612L5.29 9.77a.75.75 0 0 1-1.08-1.04l5.25-5.5a.75.75 0 0 1 1.08 0l5.25 5.5a.75.75 0 1 1-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0 1 10 17Z" clip-rule="evenodd" />
+              </svg>
+              {stats.ticketsGrowth}%
+            </span>
+            <span class="text-gray-500 ml-2">vs bulan lalu</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remaining Quota Stat -->
+      <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-medium text-gray-500">Sisa Kuota Keseluruhan</h2>
+            <div class="p-2 bg-warning/10 rounded-lg text-warning">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+              </svg>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-2xl font-bold text-gray-900">{stats.remainingQuota}</p>
+            <span class="text-sm text-gray-500">tiket</span>
+          </div>
+          <div class="mt-3">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-gray-500">Terjual {Math.round((stats.ticketsSold / (stats.ticketsSold + stats.remainingQuota)) * 100)}%</span>
+            </div>
+            <div class="w-full bg-base-200 rounded-full h-1.5">
+              <div class="bg-warning h-1.5 rounded-full" style={`width: ${(stats.ticketsSold / (stats.ticketsSold + stats.remainingQuota)) * 100}%`}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Events Stat -->
+      <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-medium text-gray-500">Event Aktif</h2>
+            <div class="p-2 bg-info/10 rounded-lg text-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+              </svg>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <p class="text-2xl font-bold text-gray-900">{stats.activeEvents}</p>
+          </div>
+          <div class="mt-2 flex items-center text-xs text-gray-500">
+            <span>Sedang berlangsung saat ini</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Left Column: Chart & Upcoming Events -->
+      <div class="lg:col-span-2 space-y-8">
+        
+        <!-- Chart Section -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div>
+                <h2 class="card-title text-lg font-bold text-gray-900">Grafik Penjualan Tiket</h2>
+                <p class="text-sm text-gray-500">Performa penjualan 7 hari terakhir</p>
+              </div>
+              <select class="select select-bordered select-sm w-full sm:w-auto bg-gray-50">
+                <option>7 Hari Terakhir</option>
+                <option>30 Hari Terakhir</option>
+                <option>Bulan Ini</option>
+                <option>Tahun Ini</option>
+              </select>
+            </div>
+            
+            <!-- CSS Mock Chart -->
+            <div class="relative h-72 w-full mt-4">
+              <!-- Y-Axis Labels -->
+              <div class="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-xs text-gray-400 text-right pr-2">
+                <span>100</span>
+                <span>75</span>
+                <span>50</span>
+                <span>25</span>
+                <span>0</span>
+              </div>
+              
+              <!-- Chart Area -->
+              <div class="absolute left-8 right-0 top-0 bottom-6 border-b border-l border-gray-200 flex items-end justify-between gap-2 sm:gap-4 px-2 sm:px-4 pt-4">
+                <!-- Grid Lines -->
+                <div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                  <div class="w-full border-t border-gray-100 border-dashed h-0"></div>
+                  <div class="w-full border-t border-gray-100 border-dashed h-0"></div>
+                  <div class="w-full border-t border-gray-100 border-dashed h-0"></div>
+                  <div class="w-full border-t border-gray-100 border-dashed h-0"></div>
+                  <div class="w-full h-0"></div>
+                </div>
+                
+                <!-- Bars -->
+                <div class="w-full bg-primary/20 hover:bg-primary/40 transition-all duration-300 rounded-t-md relative group cursor-pointer" style="height: 30%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">12</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                <div class="w-full bg-primary/40 hover:bg-primary/60 transition-all duration-300 rounded-t-md relative group cursor-pointer" style="height: 45%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">24</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                <div class="w-full bg-primary/30 hover:bg-primary/50 transition-all duration-300 rounded-t-md relative group cursor-pointer" style="height: 35%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">18</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                <div class="w-full bg-primary/60 hover:bg-primary/80 transition-all duration-300 rounded-t-md relative group cursor-pointer" style="height: 65%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">42</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                <div class="w-full bg-primary/50 hover:bg-primary/70 transition-all duration-300 rounded-t-md relative group cursor-pointer" style="height: 55%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">35</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                <div class="w-full bg-primary/80 hover:bg-primary transition-all duration-300 rounded-t-md relative group cursor-pointer" style="height: 85%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">68</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+                <div class="w-full bg-primary hover:bg-primary-focus transition-all duration-300 rounded-t-md relative group cursor-pointer shadow-[0_0_10px_rgba(25,50,185,0.3)]" style="height: 100%">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                    <span class="font-bold">85</span> tiket
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- X-Axis Labels -->
+              <div class="absolute left-8 right-0 bottom-0 h-6 flex justify-between text-xs text-gray-500 px-2 sm:px-4 pt-2">
+                <span class="w-full text-center">Sen</span>
+                <span class="w-full text-center">Sel</span>
+                <span class="w-full text-center">Rab</span>
+                <span class="w-full text-center">Kam</span>
+                <span class="w-full text-center">Jum</span>
+                <span class="w-full text-center">Sab</span>
+                <span class="w-full text-center font-medium text-gray-900">Min</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Events -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="card-title text-lg font-bold text-gray-900">Event Mendatang</h2>
+              <a href="/dashboard/events" class="text-sm text-primary hover:text-primary-focus font-medium hover:underline">Kelola Semua</a>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="table w-full">
+                <thead>
+                  <tr class="bg-gray-50/50 text-gray-500 border-b border-gray-200">
+                    <th class="font-medium rounded-tl-lg">Nama Event</th>
+                    <th class="font-medium">Tanggal</th>
+                    <th class="font-medium">Tiket Terjual</th>
+                    <th class="font-medium text-right rounded-tr-lg">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcomingEvents.map((event) => (
+                    <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0">
+                      <td>
+                        <div class="font-medium text-gray-900">{event.title}</div>
+                        <div class="text-xs text-gray-500">{event.id}</div>
+                      </td>
+                      <td class="text-sm text-gray-600">{event.date}</td>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <div class="w-24 bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              class={`h-1.5 rounded-full ${
+                                (event.sold / event.quota) >= 0.9 ? 'bg-success' : 
+                                (event.sold / event.quota) >= 0.5 ? 'bg-primary' : 
+                                'bg-warning'
+                              }`} 
+                              style={`width: ${(event.sold / event.quota) * 100}%`}
+                            ></div>
+                          </div>
+                          <span class="text-xs font-medium text-gray-700">{event.sold}/{event.quota}</span>
+                        </div>
+                      </td>
+                      <td class="text-right">
+                        <button class="btn btn-ghost btn-xs text-gray-500 hover:text-primary">Detail</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Recent Transactions -->
+      <div class="lg:col-span-1">
+        <div class="card bg-base-100 shadow-sm border border-base-200 h-full">
+          <div class="card-body p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+              <div>
+                <h2 class="card-title text-lg font-bold text-gray-900">Transaksi Terbaru</h2>
+                <p class="text-xs text-gray-500 mt-1">Update real-time</p>
+              </div>
+              <button class="btn btn-ghost btn-sm btn-circle">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-500">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+                </svg>
+              </button>
+            </div>
+            
+            <div class="space-y-5 flex-grow">
+              {recentTransactions.map((trx) => (
+                <div class="flex items-start justify-between group">
+                  <div class="flex items-start gap-3">
+                    <div class="avatar placeholder mt-0.5">
+                      <div class="bg-primary/10 text-primary rounded-full w-10 h-10 flex items-center justify-center">
+                        <span class="text-sm font-semibold">{trx.name.charAt(0)}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">{trx.name}</p>
+                      <p class="text-xs text-gray-500 truncate max-w-[120px] sm:max-w-[150px] lg:max-w-[120px]">{trx.event}</p>
+                      <p class="text-[10px] text-gray-400 mt-0.5">{trx.date}</p>
+                    </div>
+                  </div>
+                  <div class="text-right flex flex-col items-end justify-between h-full">
+                    <p class="text-sm font-bold text-gray-900">{trx.amount}</p>
+                    <span class={`mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
+                      trx.status === 'Berhasil' ? 'bg-success/10 text-success' : 
+                      trx.status === 'Menunggu' ? 'bg-warning/10 text-warning' : 
+                      'bg-error/10 text-error'
+                    }`}>
+                      {trx.status === 'Berhasil' && (
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                      )}
+                      {trx.status === 'Menunggu' && (
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      )}
+                      {trx.status === 'Gagal' && (
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      )}
+                      {trx.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-100">
+              <a href="/dashboard/transactions" class="btn btn-outline btn-sm w-full text-base-content/70 hover:bg-base-200 hover:text-base-content hover:border-base-300">
+                Lihat Semua Transaksi
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Withdraw Modal -->
+  <dialog id="withdraw_modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Tarik Dana</h3>
+      <p class="py-4">Masukkan jumlah dana yang ingin ditarik ke rekening Anda.</p>
+      
+      <div class="form-control w-full mb-4">
+        <label class="label">
+          <span class="label-text">Jumlah Penarikan (Rp)</span>
+          <span class="label-text-alt text-gray-500">Maks: {stats.totalRevenue}</span>
+        </label>
+        <input type="text" placeholder="Contoh: 5000000" class="input input-bordered w-full" />
+      </div>
+
+      <div class="form-control w-full mb-6">
+        <label class="label">
+          <span class="label-text">Rekening Tujuan</span>
+        </label>
+        <select class="select select-bordered w-full">
+          <option disabled selected>Pilih rekening</option>
+          <option>BCA - 1234567890 a.n. Organizer</option>
+          <option>Mandiri - 0987654321 a.n. Organizer</option>
+        </select>
+      </div>
+
+      <div class="modal-action">
+        <form method="dialog">
+          <!-- if there is a button in form, it will close the modal -->
+          <button class="btn mr-2">Batal</button>
+          <button class="btn btn-primary">Proses Penarikan</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+</Layout>
