@@ -53,9 +53,6 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
       <!-- Ticket Card -->
       <div class="card bg-base-100 shadow-2xl overflow-hidden relative">
         
-        <!-- Anti-fraud visual indicator (moving line) -->
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70 animate-[scan_2s_ease-in-out_infinite]"></div>
-        
         <!-- Ticket Header -->
         <div class="bg-primary text-primary-content p-6 text-center relative overflow-hidden">
           <!-- Decorative circles -->
@@ -75,13 +72,8 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
             <div class="bg-white p-3 rounded-xl shadow-sm border border-base-200 relative">
               <!-- Placeholder for actual QR Code -->
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticket.qrCode}`} alt={`QR Code for ${ticket.id}`} class="w-48 h-48 object-contain" />
-              
-              <!-- Live timestamp for anti-fraud -->
-              <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-base-300 text-base-content text-xs px-3 py-1 rounded-full font-mono whitespace-nowrap shadow-sm" id="live-time">
-                00:00:00
-              </div>
             </div>
-            <p class="mt-5 font-mono text-lg font-bold tracking-widest text-base-content">{ticket.id}</p>
+            <p class="mt-4 font-mono text-lg font-bold tracking-widest text-base-content">{ticket.id}</p>
             <p class="text-xs text-base-content/50 mt-1">Tunjukkan QR code ini saat masuk</p>
           </div>
 
@@ -136,38 +128,3 @@ const statusBadge = ticket.status === 'valid' ? 'TIKET VALID' : ticket.status ==
     </div>
   </div>
 </Layout>
-
-<style>
-  @keyframes scan {
-    0% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(400px);
-    }
-    100% {
-      transform: translateY(0);
-    }
-  }
-</style>
-
-<script>
-  // Update live time for anti-fraud
-  function updateTime() {
-    const timeElement = document.getElementById('live-time');
-    if (timeElement) {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString('id-ID', { 
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      timeElement.textContent = timeString;
-    }
-  }
-
-  // Initial call and set interval
-  updateTime();
-  setInterval(updateTime, 1000);
-</script>
