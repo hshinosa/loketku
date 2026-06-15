@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 interface EventOption {
   id: string;
   title: string;
+  date: string;
+  location: string;
+  poster: string;
   totalTickets: number;
   scannedTickets: number;
 }
@@ -12,9 +15,11 @@ interface Props {
 }
 
 export default function ScannerApp({ initialEventId }: Props) {
-  const [ticketId, setTicketId] = useState('');
   const [events, setEvents] = useState<EventOption[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState(initialEventId ?? 'all');
+  const [selectedEvent, setSelectedEvent] = useState<EventOption | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [ticketId, setTicketId] = useState('');
   const [scanResult, setScanResult] = useState<{
     status: 'idle' | 'success' | 'error';
     message: string;
@@ -24,17 +29,33 @@ export default function ScannerApp({ initialEventId }: Props) {
   const [scanHistory, setScanHistory] = useState<{ id: string; name: string; status: string; time: string }[]>([]);
 
   useEffect(() => {
-    fetch('/api/events').then(r => r.json()).then(data => {
-      if (data.events) {
-        setEvents(data.events.map((e: any) => ({
-          id: e.id,
-          title: e.title,
-          totalTickets: e.quota ?? 0,
-          scannedTickets: e.sold ?? 0,
-        })));
-      }
-    }).catch(() => {});
-  }, []);
+    fetch('/api/events')
+      .then(r => r.json())
+      .then(data => {
+        if (data.events) {
+          const list: EventOption[] = data.events.map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            date: e.date,
+            location: e.location,
+            poster: e.poster,
+            totalTickets: e.quota ?? 0,
+            scannedTickets: e.sold ?? 0,
+          }));
+          setEvents(list);
+
+          if (initialEventId) {
+            const match = list.find(e => e.id === initialEventId);
+            if (match) setSelectedEvent(match);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [initialEventId]);
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +84,7 @@ export default function ScannerApp({ initialEventId }: Props) {
             event: data.ticket?.eventTitle ?? '-',
           },
         });
-        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'success', time }, ...prev].slice(0, 10));
+        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'success', time }, ...prev].slice(0, 20));
       } else if (data.status === 'used') {
         setScanResult({
           status: 'error',
@@ -74,12 +95,12 @@ export default function ScannerApp({ initialEventId }: Props) {
             event: data.ticket.eventTitle,
           } : undefined,
         });
-        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'used', time }, ...prev].slice(0, 10));
+        setScanHistory(prev => [{ id, name: data.ticket?.buyerName ?? id, status: 'used', time }, ...prev].slice(0, 20));
       } else {
         setScanResult({ status: 'error', message: data.message ?? 'Tiket Tidak Valid!' });
-        setScanHistory(prev => [{ id, name: id, status: 'invalid', time }, ...prev].slice(0, 10));
+        setScanHistory(prev => [{ id, name: id, status: 'invalid', time }, ...prev].slice(0, 20));
       }
-    } catch (err) {
+    } catch {
       setScanResult({ status: 'error', message: 'Gagal terhubung ke server' });
     }
 
@@ -90,20 +111,67 @@ export default function ScannerApp({ initialEventId }: Props) {
     }, 3000);
   };
 
-  const selectedEvent = events.find(e => e.id === selectedEventId);
   const totalScans = scanHistory.filter(h => h.status === 'success').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
+
+  if (!selectedEvent) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-xl font-bold text-base-content mb-2">Pilih Event</h2>
+        <p className="text-base-content/60 mb-6">Pilih event mana yang ingin di-scan tiketnya.</p>
+
+        {events.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-base-content/50">Belum ada event tersedia.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {events.map(ev => (
+              <button
+                key={ev.id}
+                onClick={() => setSelectedEvent(ev)}
+                className="card card-side bg-base-100 shadow-sm border border-base-200 hover:border-primary hover:shadow-md transition-all text-left"
+              >
+                <figure className="w-24 h-24 flex-shrink-0">
+                  <img src={ev.poster} alt={ev.title} className="w-full h-full object-cover" />
+                </figure>
+                <div className="card-body p-4">
+                  <h3 className="card-title text-sm font-bold text-base-content line-clamp-1">{ev.title}</h3>
+                  <p className="text-xs text-base-content/60">{formatDate(ev.date)} — {ev.location}</p>
+                  <div className="flex gap-4 mt-1">
+                    <span className="text-xs text-base-content/50">Kuota: {ev.totalTickets}</span>
+                    <span className="text-xs text-primary font-medium">Terjual: {ev.scannedTickets}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto">
-      {/* Event Filter */}
-      <div className="form-control mb-4">
-        <label className="label"><span className="label-text font-medium">Filter Event</span></label>
-        <select className="select select-bordered w-full" value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}>
-          <option value="all">Semua Event</option>
-          {events.map(ev => (
-            <option key={ev.id} value={ev.id}>{ev.title}</option>
-          ))}
-        </select>
+      {/* Selected Event Header */}
+      <div className="flex items-center gap-3 mb-6 bg-base-100 p-4 rounded-xl border border-base-200">
+        <button onClick={() => { setSelectedEvent(null); setScanHistory([]); }} className="btn btn-ghost btn-sm btn-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+        </button>
+        <img src={selectedEvent.poster} alt="" className="w-12 h-12 rounded-lg object-cover" />
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-base-content truncate">{selectedEvent.title}</p>
+          <p className="text-xs text-base-content/60">{formatDate(selectedEvent.date)} — {selectedEvent.location}</p>
+        </div>
       </div>
 
       {/* Stats Bar */}
@@ -113,12 +181,12 @@ export default function ScannerApp({ initialEventId }: Props) {
           <div className="stat-value text-2xl text-primary">{totalScans}</div>
         </div>
         <div className="stat py-3 px-4">
-          <div className="stat-title text-xs">Total Check-in</div>
-          <div className="stat-value text-2xl">{selectedEvent ? selectedEvent.scannedTickets : '—'}</div>
+          <div className="stat-title text-xs">Terjual</div>
+          <div className="stat-value text-2xl">{selectedEvent.scannedTickets}</div>
         </div>
         <div className="stat py-3 px-4">
-          <div className="stat-title text-xs">Kuota Tiket</div>
-          <div className="stat-value text-2xl">{selectedEvent ? selectedEvent.totalTickets : '—'}</div>
+          <div className="stat-title text-xs">Kuota</div>
+          <div className="stat-value text-2xl">{selectedEvent.totalTickets}</div>
         </div>
       </div>
 
@@ -178,7 +246,6 @@ export default function ScannerApp({ initialEventId }: Props) {
           <input type="text" placeholder="Masukkan ID Tiket..." className="input input-bordered flex-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} disabled={!isScanning} />
           <button type="submit" className="btn btn-primary" disabled={!isScanning || !ticketId.trim()}>Cek</button>
         </form>
-
         <div className="divider text-xs text-base-content/40">SIMULASI</div>
         <div className="grid grid-cols-2 gap-3">
           <button type="button" onClick={() => scanTicket('tkt-001')} className="btn btn-outline btn-success btn-sm" disabled={!isScanning}>Scan Valid</button>
