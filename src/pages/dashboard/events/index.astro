@@ -19,7 +19,7 @@ const eventsList = rows.map((e) => {
   const sold = e.sold;
   const quota = e.quota;
   const ratio = quota > 0 ? sold / quota : 0;
-  const status = ratio >= 1 ? 'Selesai' : sold > 0 ? 'Aktif' : 'Draft';
+  const status = ratio >= 1 ? 'Selesai' : 'Aktif';
   return {
     id: e.id,
     title: e.title,
@@ -59,7 +59,6 @@ const eventsList = rows.map((e) => {
       <div class="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
         <button class="btn btn-sm bg-primary text-white hover:bg-primary/90 border-none">Semua Event</button>
         <button class="btn btn-sm btn-ghost">Aktif</button>
-        <button class="btn btn-sm btn-ghost">Draft</button>
         <button class="btn btn-sm btn-ghost">Selesai</button>
       </div>
       <div class="join w-full md:w-auto">
@@ -81,9 +80,7 @@ const eventsList = rows.map((e) => {
             <img src={event.image} alt={event.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             <div class="absolute top-3 right-3">
               <span class={`badge ${
-                event.status === 'Aktif' ? 'bg-primary border-none' : 
-                event.status === 'Draft' ? 'badge-warning' : 
-                'badge-neutral'
+                event.status === 'Aktif' ? 'bg-primary border-none' : 'badge-neutral'
               } text-white font-medium shadow-sm`}>
                 {event.status}
               </span>
