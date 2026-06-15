@@ -22,136 +22,47 @@ const mockEvents = rows.map((e) => ({
 ---
 
 <Layout title="Loketku - Platform Ticketing Event Kampus & Komunitas">
-  {/* Hero Section */}
-  <section class="relative bg-primary text-primary-content overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-primary to-secondary opacity-90"></div>
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 md:pt-24 md:pb-32 relative z-10">
-      <div class="max-w-4xl mx-auto text-center">
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white">
-          Bikin Event Kampus Nggak Pake Ribet.
-        </h1>
-        <p class="text-lg md:text-xl text-base-content/80 mb-8 max-w-2xl mx-auto">
-          Dari jualan tiket sampai check-in hari H, semua otomatis. Bebas drama bukti transfer palsu, rekap manual yang bikin pusing, dan antrean panjang.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-          <a href="/login" class="btn btn-error btn-lg font-semibold shadow-lg">
-            Buat Event Sekarang
-          </a>
-          <a href="#events" class="btn btn-outline btn-lg text-white border-white hover:bg-white hover:text-primary font-semibold">
-            Cari Event
-          </a>
-        </div>
-        
-        {/* Search Bar */}
-        <div class="max-w-xl mx-auto">
-          <div class="join w-full shadow-lg">
-            <input type="text" placeholder="Cari event kampus..." class="input input-bordered join-item w-full bg-base-100 text-base-content" />
-            <button class="btn btn-primary join-item">Cari</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    {/* Decorative wave */}
-    <div class="absolute bottom-0 left-0 right-0">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" class="w-full h-auto fill-base-200 block">
-        <path d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-      </svg>
-    </div>
-  </section>
-
-  {/* Features - Simplified */}
-  <section class="py-16 bg-base-200">
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl font-bold text-base-content mb-2">Kenapa Pakai Loketku?</h2>
-        <p class="text-base-content/60">Solusi lengkap untuk masalah klasik kepanitiaan event.</p>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body items-center text-center p-6">
-            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 class="card-title text-lg">Anti-Fraud & Validasi Otomatis</h3>
-            <p class="text-base-content/70 text-sm">Sistem otomatis cek pembayaran QRIS/VA. Nggak ada lagi drama bukti transfer palsu atau klaim "udah bayar tapi nggak ada di list".</p>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body items-center text-center p-6">
-            <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 class="card-title text-lg">E-Ticket Instan</h3>
-            <p class="text-base-content/70 text-sm">Pembeli langsung dapat QR code e-ticket detik itu juga setelah bayar. Hilangkan delay konfirmasi berjam-jam yang bikin peserta panik.</p>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body items-center text-center p-6">
-            <div class="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 class="card-title text-lg">Audit Trail & Tarik Dana Cepat</h3>
-            <p class="text-base-content/70 text-sm">Riwayat transaksi tercatat rapi, nggak ada lagi selisih uang saat rekap manual. Tarik dana kapan aja untuk bayar DP vendor.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   {/* Events Section */}
-  <section id="events" class="py-16 bg-base-100">
+  <section class="pt-8 pb-12 bg-base-100">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-end mb-8">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
         <div>
-          <h2 class="text-3xl font-bold text-base-content mb-1">Event Terpopuler</h2>
-          <p class="text-base-content/60">Jangan sampai kehabisan tiket event favoritmu!</p>
+          <h1 class="text-3xl font-bold text-base-content mb-1">Event Terpopuler</h1>
+          <p class="text-base-content/60">Temukan dan beli tiket event favoritmu</p>
         </div>
-        <a href="#events" class="link link-primary font-medium hidden sm:block">
-          Lihat Semua →
-        </a>
+        <div class="join w-full sm:w-auto sm:max-w-xs">
+          <input type="text" placeholder="Cari event..." class="input input-bordered input-sm join-item flex-1" />
+          <button class="btn btn-primary btn-sm join-item">Cari</button>
+        </div>
       </div>
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {mockEvents.map((event) => (
-          <EventCard 
-            id={event.id}
-            title={event.title}
-            date={event.date}
-            location={event.location}
-            imageUrl={event.imageUrl}
-            price={event.price}
-          />
-        ))}
-      </div>
+      {mockEvents.length > 0 ? (
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {mockEvents.map((event) => (
+            <EventCard 
+              id={event.id}
+              title={event.title}
+              date={event.date}
+              location={event.location}
+              imageUrl={event.imageUrl}
+              price={event.price}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-16">
+          <p class="text-base-content/50 text-lg">Belum ada event tersedia.</p>
+        </div>
+      )}
     </div>
   </section>
 
-  {/* CTA Section */}
-  <section class="py-16 bg-base-200">
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-      <div class="card bg-primary text-primary-content shadow-xl">
-        <div class="card-body text-center p-10 md:p-12">
-          <h2 class="text-3xl md:text-4xl font-bold mb-4">Siap Bikin Eventmu Sukses?</h2>
-          <p class="text-primary-content/80 text-lg mb-6 max-w-2xl mx-auto">
-            Gabung dengan ratusan panitia event kampus dan komunitas yang udah ngerasain gampangnya jualan tiket pakai Loketku.
-          </p>
-          <div>
-            <a href="/login" class="btn btn-secondary btn-lg font-bold px-10 shadow-lg">
-              Mulai Sekarang - Gratis!
-            </a>
-          </div>
-        </div>
-      </div>
+  {/* CTA - Compact */}
+  <section class="py-10 bg-base-200">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-2xl font-bold text-base-content mb-2">Mau bikin event sendiri?</h2>
+      <p class="text-base-content/60 mb-4">Gratis, langsung bisa jualan tiket dalam hitungan menit.</p>
+      <a href="/login" class="btn btn-primary">Buat Event Sekarang</a>
     </div>
   </section>
 </Layout>
