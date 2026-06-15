@@ -63,16 +63,21 @@ export default function SearchBar() {
   }, [query]);
 
   return (
-    <div ref={containerRef} className="relative w-full sm:w-auto sm:max-w-xs">
+    <div ref={containerRef} className="relative w-full">
       <div className="join w-full">
-        <input
-          type="text"
-          placeholder="Cari event..."
-          className="input input-bordered input-sm join-item flex-1"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
-        />
+        <div className="relative flex-1">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40 pointer-events-none">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Cari event..."
+            className="input input-bordered input-sm join-item w-full pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => results.length > 0 && setIsOpen(true)}
+          />
+        </div>
         <button className="btn btn-primary btn-sm join-item">Cari</button>
       </div>
 
