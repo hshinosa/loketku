@@ -131,10 +131,7 @@ export default function CreateEventForm() {
   const minPrice = categories.length > 0 ? Math.min(...categories.map(c => c.price)) : 0;
   const maxPrice = categories.length > 0 ? Math.max(...categories.map(c => c.price)) : 0;
 
-  // Submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handlePublish = async () => {
     if (currentStep !== 4) return;
 
     if (!title.trim() || !date || !time || !location.trim() || !imageUrl) {
@@ -207,7 +204,7 @@ export default function CreateEventForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
       <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-6">
         <div className="flex items-center justify-between">
           {STEPS.map((step, i) => (
@@ -649,7 +646,7 @@ export default function CreateEventForm() {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
             </button>
           ) : (
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary gap-1">
+            <button type="button" onClick={handlePublish} disabled={isSubmitting} className="btn btn-primary gap-1">
               {isSubmitting ? (
                 <><span className="loading loading-spinner"></span>Memproses...</>
               ) : (
@@ -672,6 +669,6 @@ export default function CreateEventForm() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </form>
+    </div>
   );
 }
